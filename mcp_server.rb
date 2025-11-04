@@ -52,7 +52,7 @@ class MCPServer
     # MCP требует, чтобы id был строкой или числом, не nil
     # Если id nil, используем 0 как fallback
     response_id = id.nil? ? 0 : id
-    
+
     send_response({
       jsonrpc: '2.0',
       id: response_id,
@@ -66,7 +66,7 @@ class MCPServer
   def handle_request(request)
     # Проверяем, что это валидный JSON-RPC запрос
     return unless request.is_a?(Hash)
-    
+
     method = request['method']
     id = request['id']
     params = request['params'] || {}
@@ -92,7 +92,7 @@ class MCPServer
   def handle_tools_list(id, params)
     # id должен быть строкой или числом
     response_id = id.nil? ? 0 : id
-    
+
     send_response({
       jsonrpc: '2.0',
       id: response_id,
@@ -111,7 +111,7 @@ class MCPServer
                 signals: { type: 'array', items: { type: 'string' } },
                 limit_tokens: { type: 'number' }
               },
-              required: ['project_key']
+              required: [ 'project_key' ]
             }
           },
           {
@@ -131,7 +131,7 @@ class MCPServer
                 quality: { type: 'object' },
                 meta: { type: 'object' }
               },
-              required: ['project_key', 'kind', 'content']
+              required: [ 'project_key', 'kind', 'content' ]
             }
           }
         ]
@@ -142,7 +142,7 @@ class MCPServer
   def handle_initialize(id, params)
     # id должен быть строкой или числом
     response_id = id.nil? ? 0 : id
-    
+
     send_response({
       jsonrpc: '2.0',
       id: response_id,
@@ -162,7 +162,7 @@ class MCPServer
   def handle_tool_call(id, params)
     # id должен быть строкой или числом
     response_id = id.nil? ? 0 : id
-    
+
     tool_name = params['name']
     arguments = params['arguments'] || {}
 
@@ -256,4 +256,3 @@ if __FILE__ == $PROGRAM_NAME
   server = MCPServer.new
   server.run
 end
-

@@ -4,5 +4,3 @@ class Project < ApplicationRecord
   validates :name, presence: true
   validates :path, presence: true, uniqueness: true
 end
-
-
