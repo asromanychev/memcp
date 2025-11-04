@@ -133,7 +133,7 @@ class Memories::RecallService
   def calculate_confidence(records)
     return 0.0 unless records.any?
 
-    [(records.count.to_f / 10.0).clamp(0.0, 1.0), 0.5].max
+    [ (records.count.to_f / 10.0).clamp(0.0, 1.0), 0.5 ].max
   end
 
   def empty_result
