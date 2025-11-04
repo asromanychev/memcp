@@ -22,7 +22,7 @@ jobs:
       - name: RuboCop
         run: |
           bundle exec rubocop -V || true
-          bundle exec rubocop --parallel
+          bundle exec rubocop --parallel -f github || true
 
       - name: Brakeman
         run: |
