@@ -1,0 +1,492 @@
+  [1m[35mSQL (0.1ms)[0m  [1m[35mSET search_path TO public /*application='Memcp'*/[0m
+  [1m[35m (60.3ms)[0m  [1m[35mDROP DATABASE IF EXISTS "memcp_development" /*application='Memcp'*/[0m
+  [1m[35mSQL (0.1ms)[0m  [1m[35mSET search_path TO public /*application='Memcp'*/[0m
+  [1m[35m (12.9ms)[0m  [1m[35mDROP DATABASE IF EXISTS "memcp_test" /*application='Memcp'*/[0m
+  [1m[35mSQL (0.1ms)[0m  [1m[35mSET search_path TO public /*application='Memcp'*/[0m
+  [1m[35m (120.6ms)[0m  [1m[35mCREATE DATABASE "memcp_development" ENCODING = 'unicode' /*application='Memcp'*/[0m
+  [1m[35mSQL (0.1ms)[0m  [1m[35mSET search_path TO public /*application='Memcp'*/[0m
+  [1m[35m (102.2ms)[0m  [1m[35mCREATE DATABASE "memcp_test" ENCODING = 'unicode' /*application='Memcp'*/[0m
+  [1m[35m (13.3ms)[0m  [1m[35mCREATE TABLE "schema_migrations" ("version" character varying NOT NULL PRIMARY KEY) /*application='Memcp'*/[0m
+  [1m[35m (9.9ms)[0m  [1m[35mCREATE TABLE "ar_internal_metadata" ("key" character varying NOT NULL PRIMARY KEY, "value" character varying, "created_at" timestamp(6) NOT NULL, "updated_at" timestamp(6) NOT NULL) /*application='Memcp'*/[0m
+  [1m[35m (0.1ms)[0m  [1m[34mSELECT pg_try_advisory_lock(8627230769604134730) /*application='Memcp'*/[0m
+  [1m[36mActiveRecord::SchemaMigration Load (0.4ms)[0m  [1m[34mSELECT "schema_migrations"."version" FROM "schema_migrations" ORDER BY "schema_migrations"."version" ASC /*application='Memcp'*/[0m
+  [1m[36mActiveRecord::InternalMetadata Load (0.9ms)[0m  [1m[34mSELECT * FROM "ar_internal_metadata" WHERE "ar_internal_metadata"."key" = 'environment' ORDER BY "ar_internal_metadata"."key" ASC LIMIT 1 /*application='Memcp'*/[0m
+  [1m[36mActiveRecord::InternalMetadata Create (1.3ms)[0m  [1m[32mINSERT INTO "ar_internal_metadata" ("key", "value", "created_at", "updated_at") VALUES ('environment', 'development', '2025-11-04 06:40:19.781611', '2025-11-04 06:40:19.781615') RETURNING "key" /*application='Memcp'*/[0m
+Migrating to CreateProjects (20251104062457)
+  [1m[36mTRANSACTION (0.1ms)[0m  [1m[35mBEGIN /*application='Memcp'*/[0m
+  [1m[35m (11.3ms)[0m  [1m[35mCREATE TABLE "projects" ("id" bigserial primary key, "name" character varying NOT NULL, "path" character varying NOT NULL, "created_at" timestamp(6) NOT NULL, "updated_at" timestamp(6) NOT NULL) /*application='Memcp'*/[0m
+  [1m[35m (3.8ms)[0m  [1m[35mCREATE UNIQUE INDEX "index_projects_on_path" ON "projects" ("path") /*application='Memcp'*/[0m
+  [1m[36mActiveRecord::SchemaMigration Create (0.5ms)[0m  [1m[32mINSERT INTO "schema_migrations" ("version") VALUES ('20251104062457') RETURNING "version" /*application='Memcp'*/[0m
+  [1m[36mTRANSACTION (1.3ms)[0m  [1m[35mCOMMIT /*application='Memcp'*/[0m
+Migrating to CreateMemoryRecords (20251104062500)
+  [1m[36mTRANSACTION (0.2ms)[0m  [1m[35mBEGIN /*application='Memcp'*/[0m
+  [1m[35m (11.4ms)[0m  [1m[35mCREATE TABLE "memory_records" ("id" bigserial primary key, "project_id" bigint NOT NULL, "content" text NOT NULL, "embedding_data" text, "metadata" jsonb DEFAULT '{}', "created_at" timestamp(6) NOT NULL, "updated_at" timestamp(6) NOT NULL, CONSTRAINT "fk_rails_9d541098f3"
+FOREIGN KEY ("project_id")
+  REFERENCES "projects" ("id")
+) /*application='Memcp'*/[0m
+  [1m[35m (3.8ms)[0m  [1m[35mCREATE INDEX "index_memory_records_on_project_id" ON "memory_records" ("project_id") /*application='Memcp'*/[0m
+  [1m[35m (1.6ms)[0m  [1m[35mCREATE INDEX "index_memory_records_on_project_id" ON "memory_records" ("project_id") /*application='Memcp'*/[0m
+  [1m[36mTRANSACTION (0.1ms)[0m  [1m[31mROLLBACK /*application='Memcp'*/[0m
+  [1m[35m (0.2ms)[0m  [1m[34mSELECT pg_advisory_unlock(8627230769604134730) /*application='Memcp'*/[0m
+  [1m[35m (0.2ms)[0m  [1m[34mSELECT pg_try_advisory_lock(8627230769604134730) /*application='Memcp'*/[0m
+  [1m[36mActiveRecord::SchemaMigration Load (0.9ms)[0m  [1m[34mSELECT "schema_migrations"."version" FROM "schema_migrations" ORDER BY "schema_migrations"."version" ASC /*application='Memcp'*/[0m
+  [1m[36mActiveRecord::InternalMetadata Load (0.9ms)[0m  [1m[34mSELECT * FROM "ar_internal_metadata" WHERE "ar_internal_metadata"."key" = 'environment' ORDER BY "ar_internal_metadata"."key" ASC LIMIT 1 /*application='Memcp'*/[0m
+Migrating to CreateMemoryRecords (20251104062500)
+  [1m[36mTRANSACTION (0.2ms)[0m  [1m[35mBEGIN /*application='Memcp'*/[0m
+  [1m[35m (13.1ms)[0m  [1m[35mCREATE TABLE "memory_records" ("id" bigserial primary key, "project_id" bigint NOT NULL, "content" text NOT NULL, "embedding_data" text, "metadata" jsonb DEFAULT '{}', "created_at" timestamp(6) NOT NULL, "updated_at" timestamp(6) NOT NULL, CONSTRAINT "fk_rails_9d541098f3"
+FOREIGN KEY ("project_id")
+  REFERENCES "projects" ("id")
+) /*application='Memcp'*/[0m
+  [1m[35m (4.3ms)[0m  [1m[35mCREATE INDEX "index_memory_records_on_project_id" ON "memory_records" ("project_id") /*application='Memcp'*/[0m
+  [1m[35m (1.7ms)[0m  [1m[35mCREATE INDEX "index_memory_records_on_metadata" ON "memory_records" USING gin ("metadata") /*application='Memcp'*/[0m
+  [1m[36mActiveRecord::SchemaMigration Create (0.3ms)[0m  [1m[32mINSERT INTO "schema_migrations" ("version") VALUES ('20251104062500') RETURNING "version" /*application='Memcp'*/[0m
+  [1m[36mTRANSACTION (1.3ms)[0m  [1m[35mCOMMIT /*application='Memcp'*/[0m
+  [1m[35m (0.3ms)[0m  [1m[34mSELECT pg_advisory_unlock(8627230769604134730) /*application='Memcp'*/[0m
+  [1m[36mActiveRecord::SchemaMigration Load (0.2ms)[0m  [1m[34mSELECT "schema_migrations"."version" FROM "schema_migrations" ORDER BY "schema_migrations"."version" ASC /*application='Memcp'*/[0m
+Started GET "/up" for 127.0.0.1 at 2025-11-04 09:40:38 +0300
+  [1m[36mActiveRecord::SchemaMigration Load (1.0ms)[0m  [1m[34mSELECT "schema_migrations"."version" FROM "schema_migrations" ORDER BY "schema_migrations"."version" ASC /*application='Memcp'*/[0m
+Processing by Rails::HealthController#show as */*
+  Rendering html template
+  Rendered html template (Duration: 0.1ms | GC: 0.0ms)
+Completed 200 OK in 8ms (Views: 2.7ms | ActiveRecord: 0.0ms (0 queries, 0 cached) | GC: 0.1ms)
+
+
+Started POST "/recall" for 127.0.0.1 at 2025-11-04 09:40:40 +0300
+  
+ArgumentError (Before process_action callback :verify_authenticity_token has not been defined):
+  
+app/controllers/memory_controller.rb:2:in `<class:MemoryController>'
+app/controllers/memory_controller.rb:1:in `<top (required)>'
+Started POST "/recall" for 127.0.0.1 at 2025-11-04 09:40:48 +0300
+Processing by MemoryController#recall as */*
+  Parameters: {"query"=>"test", "project_path"=>"/test", "memory"=>{"query"=>"test", "project_path"=>"/test"}}
+Completed 200 OK in 0ms (Views: 0.1ms | ActiveRecord: 0.0ms (0 queries, 0 cached) | GC: 0.0ms)
+
+
+Started POST "/save" for 127.0.0.1 at 2025-11-04 09:40:53 +0300
+Processing by MemoryController#save as */*
+  Parameters: {"content"=>"test content", "project_path"=>"/test", "metadata"=>{}, "memory"=>{"content"=>"test content", "project_path"=>"/test", "metadata"=>{}}}
+Completed 200 OK in 0ms (Views: 0.1ms | ActiveRecord: 0.0ms (0 queries, 0 cached) | GC: 0.0ms)
+
+
+  [1m[35m (0.2ms)[0m  [1m[34mSELECT pg_try_advisory_lock(8627230769604134730) /*application='Memcp'*/[0m
+  [1m[36mActiveRecord::SchemaMigration Load (0.7ms)[0m  [1m[34mSELECT "schema_migrations"."version" FROM "schema_migrations" ORDER BY "schema_migrations"."version" ASC /*application='Memcp'*/[0m
+Reverting CreateMemoryRecords (20251104062500)
+  [1m[36mTRANSACTION (0.1ms)[0m  [1m[35mBEGIN /*application='Memcp'*/[0m
+  [1m[36mTRANSACTION (0.1ms)[0m  [1m[31mROLLBACK /*application='Memcp'*/[0m
+  [1m[35m (0.2ms)[0m  [1m[34mSELECT pg_advisory_unlock(8627230769604134730) /*application='Memcp'*/[0m
+  [1m[35m (0.2ms)[0m  [1m[34mSELECT pg_try_advisory_lock(8627230769604134730) /*application='Memcp'*/[0m
+  [1m[36mActiveRecord::SchemaMigration Load (0.7ms)[0m  [1m[34mSELECT "schema_migrations"."version" FROM "schema_migrations" ORDER BY "schema_migrations"."version" ASC /*application='Memcp'*/[0m
+  [1m[36mActiveRecord::InternalMetadata Load (0.7ms)[0m  [1m[34mSELECT * FROM "ar_internal_metadata" WHERE "ar_internal_metadata"."key" = 'environment' ORDER BY "ar_internal_metadata"."key" ASC LIMIT 1 /*application='Memcp'*/[0m
+  [1m[35m (0.2ms)[0m  [1m[34mSELECT pg_advisory_unlock(8627230769604134730) /*application='Memcp'*/[0m
+  [1m[36mActiveRecord::SchemaMigration Load (0.2ms)[0m  [1m[34mSELECT "schema_migrations"."version" FROM "schema_migrations" ORDER BY "schema_migrations"."version" ASC /*application='Memcp'*/[0m
+  [1m[36mActiveRecord::SchemaMigration Load (0.6ms)[0m  [1m[34mSELECT "schema_migrations"."version" FROM "schema_migrations" ORDER BY "schema_migrations"."version" ASC /*application='Memcp'*/[0m
+  [1m[35m (0.1ms)[0m  [1m[34mSELECT pg_try_advisory_lock(8627230769604134730) /*application='Memcp'*/[0m
+  [1m[36mActiveRecord::SchemaMigration Load (0.7ms)[0m  [1m[34mSELECT "schema_migrations"."version" FROM "schema_migrations" ORDER BY "schema_migrations"."version" ASC /*application='Memcp'*/[0m
+  [1m[36mActiveRecord::InternalMetadata Load (0.5ms)[0m  [1m[34mSELECT * FROM "ar_internal_metadata" WHERE "ar_internal_metadata"."key" = 'environment' ORDER BY "ar_internal_metadata"."key" ASC LIMIT 1 /*application='Memcp'*/[0m
+  [1m[35m (0.2ms)[0m  [1m[34mSELECT pg_advisory_unlock(8627230769604134730) /*application='Memcp'*/[0m
+  [1m[36mActiveRecord::SchemaMigration Load (0.1ms)[0m  [1m[34mSELECT "schema_migrations"."version" FROM "schema_migrations" ORDER BY "schema_migrations"."version" ASC /*application='Memcp'*/[0m
+Started POST "/recall" for 127.0.0.1 at 2025-11-04 09:43:29 +0300
+  [1m[36mActiveRecord::SchemaMigration Load (0.6ms)[0m  [1m[34mSELECT "schema_migrations"."version" FROM "schema_migrations" ORDER BY "schema_migrations"."version" ASC /*application='Memcp'*/[0m
+Processing by MemoryController#recall as */*
+  Parameters: {"query"=>"test", "project_path"=>"/test", "memory"=>{"query"=>"test", "project_path"=>"/test"}}
+Completed 200 OK in 0ms (Views: 0.2ms | ActiveRecord: 0.0ms (0 queries, 0 cached) | GC: 0.0ms)
+
+
+  [1m[35m (0.2ms)[0m  [1m[34mSELECT pg_try_advisory_lock(8627230769604134730) /*application='Memcp'*/[0m
+  [1m[36mActiveRecord::SchemaMigration Load (0.9ms)[0m  [1m[34mSELECT "schema_migrations"."version" FROM "schema_migrations" ORDER BY "schema_migrations"."version" ASC /*application='Memcp'*/[0m
+  [1m[36mActiveRecord::InternalMetadata Load (0.7ms)[0m  [1m[34mSELECT * FROM "ar_internal_metadata" WHERE "ar_internal_metadata"."key" = 'environment' ORDER BY "ar_internal_metadata"."key" ASC LIMIT 1 /*application='Memcp'*/[0m
+  [1m[35m (0.3ms)[0m  [1m[34mSELECT pg_advisory_unlock(8627230769604134730) /*application='Memcp'*/[0m
+  [1m[36mActiveRecord::SchemaMigration Load (0.2ms)[0m  [1m[34mSELECT "schema_migrations"."version" FROM "schema_migrations" ORDER BY "schema_migrations"."version" ASC /*application='Memcp'*/[0m
+  [1m[36mActiveRecord::SchemaMigration Load (0.9ms)[0m  [1m[34mSELECT "schema_migrations"."version" FROM "schema_migrations" ORDER BY "schema_migrations"."version" ASC /*application='Memcp'*/[0m
+  [1m[36mActiveRecord::SchemaMigration Load (0.9ms)[0m  [1m[34mSELECT "schema_migrations"."version" FROM "schema_migrations" ORDER BY "schema_migrations"."version" ASC /*application='Memcp'*/[0m
+  [1m[36mActiveRecord::InternalMetadata Load (0.5ms)[0m  [1m[34mSELECT * FROM "ar_internal_metadata" WHERE "ar_internal_metadata"."key" = 'environment' ORDER BY "ar_internal_metadata"."key" ASC LIMIT 1 /*application='Memcp'*/[0m
+  [1m[36mActiveRecord::SchemaMigration Load (0.1ms)[0m  [1m[34mSELECT "schema_migrations"."version" FROM "schema_migrations" ORDER BY "schema_migrations"."version" ASC /*application='Memcp'*/[0m
+  [1m[36mActiveRecord::InternalMetadata Load (0.1ms)[0m  [1m[34mSELECT * FROM "ar_internal_metadata" WHERE "ar_internal_metadata"."key" = 'environment' ORDER BY "ar_internal_metadata"."key" ASC LIMIT 1 /*application='Memcp'*/[0m
+  [1m[36mActiveRecord::SchemaMigration Load (0.1ms)[0m  [1m[34mSELECT "schema_migrations"."version" FROM "schema_migrations" ORDER BY "schema_migrations"."version" ASC /*application='Memcp'*/[0m
+  [1m[36mActiveRecord::InternalMetadata Load (0.1ms)[0m  [1m[34mSELECT * FROM "ar_internal_metadata" WHERE "ar_internal_metadata"."key" = 'environment' ORDER BY "ar_internal_metadata"."key" ASC LIMIT 1 /*application='Memcp'*/[0m
+  [1m[35mSQL (0.3ms)[0m  [1m[35mCREATE EXTENSION IF NOT EXISTS "plpgsql" SCHEMA pg_catalog /*application='Memcp'*/[0m
+  [1m[35mSQL (0.1ms)[0m  [1m[35mCREATE EXTENSION IF NOT EXISTS "vector" /*application='Memcp'*/[0m
+  [1m[35m (13.3ms)[0m  [1m[35mDROP TABLE IF EXISTS "projects" CASCADE /*application='Memcp'*/[0m
+  [1m[35m (9.8ms)[0m  [1m[35mCREATE TABLE "projects" ("id" bigserial primary key, "name" character varying NOT NULL, "path" character varying NOT NULL, "created_at" timestamp(6) NOT NULL, "updated_at" timestamp(6) NOT NULL) /*application='Memcp'*/[0m
+  [1m[35m (4.2ms)[0m  [1m[35mCREATE UNIQUE INDEX "index_projects_on_path" ON "projects" ("path") /*application='Memcp'*/[0m
+  [1m[36mActiveRecord::SchemaMigration Load (0.1ms)[0m  [1m[34mSELECT "schema_migrations"."version" FROM "schema_migrations" ORDER BY "schema_migrations"."version" ASC /*application='Memcp'*/[0m
+  [1m[36mActiveRecord::InternalMetadata Load (0.1ms)[0m  [1m[34mSELECT * FROM "ar_internal_metadata" WHERE "ar_internal_metadata"."key" = 'environment' ORDER BY "ar_internal_metadata"."key" ASC LIMIT 1 /*application='Memcp'*/[0m
+  [1m[36mActiveRecord::InternalMetadata Load (0.1ms)[0m  [1m[34mSELECT * FROM "ar_internal_metadata" WHERE "ar_internal_metadata"."key" = 'environment' ORDER BY "ar_internal_metadata"."key" ASC LIMIT 1 /*application='Memcp'*/[0m
+  [1m[36mActiveRecord::InternalMetadata Load (0.1ms)[0m  [1m[34mSELECT * FROM "ar_internal_metadata" WHERE "ar_internal_metadata"."key" = 'schema_sha1' ORDER BY "ar_internal_metadata"."key" ASC LIMIT 1 /*application='Memcp'*/[0m
+  [1m[36mActiveRecord::InternalMetadata Create (1.3ms)[0m  [1m[32mINSERT INTO "ar_internal_metadata" ("key", "value", "created_at", "updated_at") VALUES ('schema_sha1', '071134bcca3ed302313a9ece964cbdffa571684e', '2025-11-04 06:43:53.458246', '2025-11-04 06:43:53.458251') RETURNING "key" /*application='Memcp'*/[0m
+  [1m[35mSQL (17.8ms)[0m  [1m[35mCREATE EXTENSION IF NOT EXISTS "plpgsql" SCHEMA pg_catalog /*application='Memcp'*/[0m
+  [1m[35mSQL (23.0ms)[0m  [1m[35mCREATE EXTENSION IF NOT EXISTS "vector" /*application='Memcp'*/[0m
+  [1m[35m (0.1ms)[0m  [1m[35mDROP TABLE IF EXISTS "projects" CASCADE /*application='Memcp'*/[0m
+  [1m[35m (12.3ms)[0m  [1m[35mCREATE TABLE "projects" ("id" bigserial primary key, "name" character varying NOT NULL, "path" character varying NOT NULL, "created_at" timestamp(6) NOT NULL, "updated_at" timestamp(6) NOT NULL) /*application='Memcp'*/[0m
+  [1m[35m (4.5ms)[0m  [1m[35mCREATE UNIQUE INDEX "index_projects_on_path" ON "projects" ("path") /*application='Memcp'*/[0m
+  [1m[35m (8.1ms)[0m  [1m[35mCREATE TABLE "schema_migrations" ("version" character varying NOT NULL PRIMARY KEY) /*application='Memcp'*/[0m
+  [1m[36mActiveRecord::SchemaMigration Load (0.3ms)[0m  [1m[34mSELECT "schema_migrations"."version" FROM "schema_migrations" ORDER BY "schema_migrations"."version" ASC /*application='Memcp'*/[0m
+  [1m[35m (1.3ms)[0m  [1m[32mINSERT INTO "schema_migrations" (version) VALUES (20251104062500) /*application='Memcp'*/[0m
+  [1m[35m (1.1ms)[0m  [1m[32mINSERT INTO "schema_migrations" (version) VALUES
+(20251104062457); /*application='Memcp'*/[0m
+  [1m[35m (8.2ms)[0m  [1m[35mCREATE TABLE "ar_internal_metadata" ("key" character varying NOT NULL PRIMARY KEY, "value" character varying, "created_at" timestamp(6) NOT NULL, "updated_at" timestamp(6) NOT NULL) /*application='Memcp'*/[0m
+  [1m[36mActiveRecord::InternalMetadata Load (0.6ms)[0m  [1m[34mSELECT * FROM "ar_internal_metadata" WHERE "ar_internal_metadata"."key" = 'environment' ORDER BY "ar_internal_metadata"."key" ASC LIMIT 1 /*application='Memcp'*/[0m
+  [1m[36mActiveRecord::InternalMetadata Create (1.3ms)[0m  [1m[32mINSERT INTO "ar_internal_metadata" ("key", "value", "created_at", "updated_at") VALUES ('environment', 'development', '2025-11-04 06:43:53.562236', '2025-11-04 06:43:53.562240') RETURNING "key" /*application='Memcp'*/[0m
+  [1m[36mActiveRecord::InternalMetadata Load (0.2ms)[0m  [1m[34mSELECT * FROM "ar_internal_metadata" WHERE "ar_internal_metadata"."key" = 'environment' ORDER BY "ar_internal_metadata"."key" ASC LIMIT 1 /*application='Memcp'*/[0m
+  [1m[36mActiveRecord::InternalMetadata Update (1.2ms)[0m  [1m[33mUPDATE "ar_internal_metadata" SET "value" = 'test', "updated_at" = '2025-11-04 06:43:53.566452' WHERE "ar_internal_metadata"."key" = 'environment' /*application='Memcp'*/[0m
+  [1m[36mActiveRecord::InternalMetadata Load (0.2ms)[0m  [1m[34mSELECT * FROM "ar_internal_metadata" WHERE "ar_internal_metadata"."key" = 'schema_sha1' ORDER BY "ar_internal_metadata"."key" ASC LIMIT 1 /*application='Memcp'*/[0m
+  [1m[36mActiveRecord::InternalMetadata Create (1.1ms)[0m  [1m[32mINSERT INTO "ar_internal_metadata" ("key", "value", "created_at", "updated_at") VALUES ('schema_sha1', '071134bcca3ed302313a9ece964cbdffa571684e', '2025-11-04 06:43:53.569687', '2025-11-04 06:43:53.569691') RETURNING "key" /*application='Memcp'*/[0m
+Started GET "/up" for 127.0.0.1 at 2025-11-04 09:44:32 +0300
+  [1m[36mActiveRecord::SchemaMigration Load (0.8ms)[0m  [1m[34mSELECT "schema_migrations"."version" FROM "schema_migrations" ORDER BY "schema_migrations"."version" ASC /*application='Memcp'*/[0m
+Processing by Rails::HealthController#show as */*
+  Rendering html template
+  Rendered html template (Duration: 0.2ms | GC: 0.0ms)
+Completed 200 OK in 8ms (Views: 2.7ms | ActiveRecord: 0.0ms (0 queries, 0 cached) | GC: 0.0ms)
+
+
+Started POST "/recall" for 127.0.0.1 at 2025-11-04 09:44:33 +0300
+Processing by MemoryController#recall as */*
+  Parameters: {"query"=>"test", "project_path"=>"/test", "memory"=>{"query"=>"test", "project_path"=>"/test"}}
+Completed 200 OK in 0ms (Views: 0.2ms | ActiveRecord: 0.0ms (0 queries, 0 cached) | GC: 0.0ms)
+
+
+Started POST "/save" for 127.0.0.1 at 2025-11-04 09:44:43 +0300
+Processing by MemoryController#save as */*
+  Parameters: {"content"=>"test content", "project_path"=>"/test", "metadata"=>{}, "memory"=>{"content"=>"test content", "project_path"=>"/test", "metadata"=>{}}}
+Completed 200 OK in 0ms (Views: 0.2ms | ActiveRecord: 0.0ms (0 queries, 0 cached) | GC: 0.0ms)
+
+
+Started GET "/up" for 127.0.0.1 at 2025-11-04 09:45:14 +0300
+Processing by Rails::HealthController#show as */*
+  Rendering html template
+  Rendered html template (Duration: 0.1ms | GC: 0.0ms)
+Completed 200 OK in 1ms (Views: 0.4ms | ActiveRecord: 0.0ms (0 queries, 0 cached) | GC: 0.0ms)
+
+
+  [1m[36mActiveRecord::SchemaMigration Load (0.6ms)[0m  [1m[34mSELECT "schema_migrations"."version" FROM "schema_migrations" ORDER BY "schema_migrations"."version" ASC /*application='Memcp'*/[0m
+Started GET "/up" for 127.0.0.1 at 2025-11-04 09:50:49 +0300
+  [1m[36mActiveRecord::SchemaMigration Load (0.7ms)[0m  [1m[34mSELECT "schema_migrations"."version" FROM "schema_migrations" ORDER BY "schema_migrations"."version" ASC /*application='Memcp'*/[0m
+Processing by Rails::HealthController#show as */*
+  Rendering html template
+  Rendered html template (Duration: 0.2ms | GC: 0.0ms)
+Completed 200 OK in 5ms (Views: 3.3ms | ActiveRecord: 0.0ms (0 queries, 0 cached) | GC: 0.0ms)
+
+
+Started POST "/recall" for 127.0.0.1 at 2025-11-04 09:50:51 +0300
+Processing by MemoryController#recall as */*
+  Parameters: {"query"=>"test query", "project_path"=>"/home/aromanychev/dev/mcp/memcp", "memory"=>{"query"=>"test query", "project_path"=>"/home/aromanychev/dev/mcp/memcp"}}
+Completed 200 OK in 1ms (Views: 0.4ms | ActiveRecord: 0.0ms (0 queries, 0 cached) | GC: 0.0ms)
+
+
+Started POST "/save" for 127.0.0.1 at 2025-11-04 09:50:52 +0300
+Processing by MemoryController#save as */*
+  Parameters: {"content"=>"test content", "project_path"=>"/home/aromanychev/dev/mcp/memcp", "metadata"=>{}, "memory"=>{"content"=>"test content", "project_path"=>"/home/aromanychev/dev/mcp/memcp", "metadata"=>{}}}
+Completed 200 OK in 1ms (Views: 0.2ms | ActiveRecord: 0.0ms (0 queries, 0 cached) | GC: 0.0ms)
+
+
+Started POST "/save" for 127.0.0.1 at 2025-11-04 09:53:17 +0300
+Processing by MemoryController#save as */*
+  Parameters: {"content"=>"Проект: mik_red5\nТип: Кастомизированная версия Redmine (система управления проектами)\nФреймворк: Ruby on Rails 6.1.7.6\nRuby версия: >= 2.7.0, < 3.3.0\nБаза данных: \n  - Production/Development: MySQL2 (miklab_production_v3)\n  - Test: SQLite3\nAutoloader: Zeitwerk\nПлагины: m_common, mik_ctlg, mik_ctlg_sp, mik_len, mik_len_sp, mik_oee, mik_oki, mik_rest, mik_vah\nТестирование: RSpec 6.0, FactoryBot, Faker, SimpleCov, RuboCop\nMCP сервер: порт 3001\nПуть: /home/aromanychev/dev/mik_red5", "project_path"=>"/home/aromanychev/dev/mik_red5", "metadata"=>{}, "memory"=>{"content"=>"Проект: mik_red5\nТип: Кастомизированная версия Redmine (система управления проектами)\nФреймворк: Ruby on Rails 6.1.7.6\nRuby версия: >= 2.7.0, < 3.3.0\nБаза данных: \n  - Production/Development: MySQL2 (miklab_production_v3)\n  - Test: SQLite3\nAutoloader: Zeitwerk\nПлагины: m_common, mik_ctlg, mik_ctlg_sp, mik_len, mik_len_sp, mik_oee, mik_oki, mik_rest, mik_vah\nТестирование: RSpec 6.0, FactoryBot, Faker, SimpleCov, RuboCop\nMCP сервер: порт 3001\nПуть: /home/aromanychev/dev/mik_red5", "project_path"=>"/home/aromanychev/dev/mik_red5", "metadata"=>{}}}
+Completed 200 OK in 1ms (Views: 0.2ms | ActiveRecord: 0.0ms (0 queries, 0 cached) | GC: 0.0ms)
+
+
+Started POST "/recall" for 127.0.0.1 at 2025-11-04 09:54:04 +0300
+Processing by MemoryController#recall as */*
+  Parameters: {"query"=>"MCP сервер порт настройка конфигурация", "project_path"=>"/home/aromanychev/dev/mik_red5", "memory"=>{"query"=>"MCP сервер порт настройка конфигурация", "project_path"=>"/home/aromanychev/dev/mik_red5"}}
+Completed 200 OK in 0ms (Views: 0.2ms | ActiveRecord: 0.0ms (0 queries, 0 cached) | GC: 0.0ms)
+
+
+  [1m[36mCACHE ActiveRecord::SchemaMigration Load (0.1ms)[0m  [1m[34mSELECT "schema_migrations"."version" FROM "schema_migrations" ORDER BY "schema_migrations"."version" ASC[0m
+  [1m[35m (0.2ms)[0m  [1m[34mSELECT pg_try_advisory_lock(8627230769604134730) /*application='Memcp'*/[0m
+  [1m[36mActiveRecord::SchemaMigration Load (1.0ms)[0m  [1m[34mSELECT "schema_migrations"."version" FROM "schema_migrations" ORDER BY "schema_migrations"."version" ASC /*application='Memcp'*/[0m
+  [1m[36mActiveRecord::InternalMetadata Load (1.2ms)[0m  [1m[34mSELECT * FROM "ar_internal_metadata" WHERE "ar_internal_metadata"."key" = 'environment' ORDER BY "ar_internal_metadata"."key" ASC LIMIT 1 /*application='Memcp'*/[0m
+Migrating to AddSpecFieldsToProjectsAndMemoryRecords (20251104065856)
+  [1m[36mTRANSACTION (0.2ms)[0m  [1m[35mBEGIN /*application='Memcp'*/[0m
+  [1m[35m (2.7ms)[0m  [1m[35mALTER TABLE "projects" ADD "key" character varying, ADD "settings" jsonb DEFAULT '{}' /*application='Memcp'*/[0m
+  [1m[35m (4.5ms)[0m  [1m[35mCREATE UNIQUE INDEX "index_projects_on_key" ON "projects" ("key") /*application='Memcp'*/[0m
+  [1m[35m (1.2ms)[0m  [1m[35mALTER TABLE "memory_records" ADD "task_external_id" character varying, ADD "kind" character varying, ADD "owner" character varying, ADD "ttl" timestamp(6), ADD "quality" jsonb DEFAULT '{}', ADD "meta" jsonb DEFAULT '{}', ADD "scope" text[] DEFAULT '{}', ADD "tags" text[] DEFAULT '{}' /*application='Memcp'*/[0m
+  [1m[35m (3.9ms)[0m  [1m[35mCREATE INDEX "index_memory_records_on_task_external_id" ON "memory_records" ("task_external_id") /*application='Memcp'*/[0m
+  [1m[35m (3.9ms)[0m  [1m[35mCREATE INDEX "index_memory_records_on_kind" ON "memory_records" ("kind") /*application='Memcp'*/[0m
+  [1m[35m (1.2ms)[0m  [1m[35mCREATE INDEX "index_memory_records_on_tags" ON "memory_records" USING gin ("tags") /*application='Memcp'*/[0m
+  [1m[35m (0.7ms)[0m  [1m[35mCREATE INDEX "index_memory_records_on_scope" ON "memory_records" USING gin ("scope") /*application='Memcp'*/[0m
+  [1m[36mActiveRecord::SchemaMigration Create (0.3ms)[0m  [1m[32mINSERT INTO "schema_migrations" ("version") VALUES ('20251104065856') RETURNING "version" /*application='Memcp'*/[0m
+  [1m[36mTRANSACTION (1.4ms)[0m  [1m[35mCOMMIT /*application='Memcp'*/[0m
+  [1m[35m (0.3ms)[0m  [1m[34mSELECT pg_advisory_unlock(8627230769604134730) /*application='Memcp'*/[0m
+  [1m[36mActiveRecord::SchemaMigration Load (0.2ms)[0m  [1m[34mSELECT "schema_migrations"."version" FROM "schema_migrations" ORDER BY "schema_migrations"."version" ASC /*application='Memcp'*/[0m
+Started POST "/save" for 127.0.0.1 at 2025-11-04 10:02:35 +0300
+  [1m[36mActiveRecord::SchemaMigration Load (0.5ms)[0m  [1m[34mSELECT "schema_migrations"."version" FROM "schema_migrations" ORDER BY "schema_migrations"."version" ASC /*application='Memcp'*/[0m
+Processing by MemoryController#save as */*
+  Parameters: {"content"=>"Причина nil ... тэги bugfix, unit; scope cart_sessions, settings; ttl 2026-06-01; task CS-214", "project_path"=>"/home/aromanychev/dev/mik_red5", "metadata"=>{"project"=>"demo", "tags"=>["bugfix", "unit"], "scope"=>["cart_sessions", "settings"], "ttl"=>"2026-06-01", "task"=>"CS-214"}, "memory"=>{"content"=>"Причина nil ... тэги bugfix, unit; scope cart_sessions, settings; ttl 2026-06-01; task CS-214", "project_path"=>"/home/aromanychev/dev/mik_red5", "metadata"=>{"project"=>"demo", "tags"=>["bugfix", "unit"], "scope"=>["cart_sessions", "settings"], "ttl"=>"2026-06-01", "task"=>"CS-214"}}}
+Completed 422 Unprocessable Content in 1ms (Views: 0.2ms | ActiveRecord: 0.0ms (0 queries, 0 cached) | GC: 0.0ms)
+
+
+Started POST "/recall" for 127.0.0.1 at 2025-11-04 10:03:49 +0300
+Processing by MemoryController#recall as */*
+  Parameters: {"query"=>"CS-214", "project_path"=>"demo", "memory"=>{"query"=>"CS-214", "project_path"=>"demo"}}
+Completed 200 OK in 0ms (Views: 0.2ms | ActiveRecord: 0.0ms (0 queries, 0 cached) | GC: 0.0ms)
+
+
+Started POST "/save" for 127.0.0.1 at 2025-11-04 10:05:38 +0300
+Processing by MemoryController#save as */*
+  Parameters: {"project_key"=>"[FILTERED]", "task_external_id"=>"CS-214", "kind"=>"fact", "content"=>"Причина nil: расхождение delay_unit/trigger_delay_unit", "scope"=>["cart_sessions", "settings"], "tags"=>["bugfix", "unit"], "quality"=>{"novelty"=>0.74, "dup"=>0.06, "usefulness"=>0.81}, "ttl"=>"2026-06-01T00:00:00Z", "meta"=>{"patch_sha"=>"abc123", "source_dialog_id"=>"dlg-1"}, "memory"=>{"project_key"=>"[FILTERED]", "task_external_id"=>"CS-214", "kind"=>"fact", "content"=>"Причина nil: расхождение delay_unit/trigger_delay_unit", "scope"=>["cart_sessions", "settings"], "tags"=>["bugfix", "unit"], "quality"=>{"novelty"=>0.74, "dup"=>0.06, "usefulness"=>0.81}, "ttl"=>"2026-06-01T00:00:00Z", "meta"=>{"patch_sha"=>"abc123", "source_dialog_id"=>"dlg-1"}}}
+  [1m[36mProject Load (1.0ms)[0m  [1m[34mSELECT "projects".* FROM "projects" WHERE "projects"."key" = 'demo' LIMIT 1 /*action='save',application='Memcp',controller='memory'*/[0m
+  ↳ app/controllers/memory_controller.rb:119:in `save'
+  [1m[36mTRANSACTION (0.1ms)[0m  [1m[35mBEGIN /*action='save',application='Memcp',controller='memory'*/[0m
+  ↳ app/controllers/memory_controller.rb:124:in `save'
+  [1m[36mProject Exists? (1.3ms)[0m  [1m[34mSELECT 1 AS one FROM "projects" WHERE "projects"."path" = '' LIMIT 1 /*action='save',application='Memcp',controller='memory'*/[0m
+  ↳ app/controllers/memory_controller.rb:124:in `save'
+  [1m[36mTRANSACTION (0.1ms)[0m  [1m[31mROLLBACK /*action='save',application='Memcp',controller='memory'*/[0m
+  ↳ app/controllers/memory_controller.rb:124:in `save'
+Completed 422 Unprocessable Content in 52ms (Views: 0.1ms | ActiveRecord: 12.7ms (2 queries, 0 cached) | GC: 1.1ms)
+
+
+Started POST "/recall" for 127.0.0.1 at 2025-11-04 10:05:40 +0300
+Processing by MemoryController#recall as */*
+  Parameters: {"project_key"=>"[FILTERED]", "task_external_id"=>"CS-214", "repo_path"=>"app/services/cart_sessions", "symbols"=>["CartSessions::Setting#trigger_delay_time_in_minutes"], "signals"=>["nil-delay", "unit-mismatch"], "limit_tokens"=>"[FILTERED]", "memory"=>{"project_key"=>"[FILTERED]", "task_external_id"=>"CS-214", "repo_path"=>"app/services/cart_sessions", "symbols"=>["CartSessions::Setting#trigger_delay_time_in_minutes"], "signals"=>["nil-delay", "unit-mismatch"], "limit_tokens"=>"[FILTERED]"}}
+  [1m[36mProject Load (0.5ms)[0m  [1m[34mSELECT "projects".* FROM "projects" WHERE "projects"."key" = 'demo' LIMIT 1 /*action='recall',application='Memcp',controller='memory'*/[0m
+  ↳ app/controllers/memory_controller.rb:18:in `recall'
+Completed 200 OK in 3ms (Views: 0.2ms | ActiveRecord: 0.5ms (1 query, 0 cached) | GC: 0.2ms)
+
+
+Started POST "/save" for 127.0.0.1 at 2025-11-04 10:05:48 +0300
+Processing by MemoryController#save as */*
+  Parameters: {"project_key"=>"[FILTERED]", "task_external_id"=>"CS-214", "kind"=>"fact", "content"=>"Причина nil: расхождение delay_unit/trigger_delay_unit", "scope"=>["cart_sessions", "settings"], "tags"=>["bugfix", "unit"], "quality"=>{"novelty"=>0.74, "dup"=>0.06, "usefulness"=>0.81}, "ttl"=>"2026-06-01T00:00:00Z", "meta"=>{"patch_sha"=>"abc123", "source_dialog_id"=>"dlg-1"}, "memory"=>{"project_key"=>"[FILTERED]", "task_external_id"=>"CS-214", "kind"=>"fact", "content"=>"Причина nil: расхождение delay_unit/trigger_delay_unit", "scope"=>["cart_sessions", "settings"], "tags"=>["bugfix", "unit"], "quality"=>{"novelty"=>0.74, "dup"=>0.06, "usefulness"=>0.81}, "ttl"=>"2026-06-01T00:00:00Z", "meta"=>{"patch_sha"=>"abc123", "source_dialog_id"=>"dlg-1"}}}
+  [1m[36mProject Load (0.5ms)[0m  [1m[34mSELECT "projects".* FROM "projects" WHERE "projects"."key" = 'demo' LIMIT 1 /*action='save',application='Memcp',controller='memory'*/[0m
+  ↳ app/controllers/memory_controller.rb:119:in `save'
+  [1m[36mTRANSACTION (0.3ms)[0m  [1m[35mBEGIN /*action='save',application='Memcp',controller='memory'*/[0m
+  ↳ app/controllers/memory_controller.rb:124:in `save'
+  [1m[36mProject Exists? (2.1ms)[0m  [1m[34mSELECT 1 AS one FROM "projects" WHERE "projects"."path" = '' LIMIT 1 /*action='save',application='Memcp',controller='memory'*/[0m
+  ↳ app/controllers/memory_controller.rb:124:in `save'
+  [1m[36mTRANSACTION (0.2ms)[0m  [1m[31mROLLBACK /*action='save',application='Memcp',controller='memory'*/[0m
+  ↳ app/controllers/memory_controller.rb:124:in `save'
+Completed 422 Unprocessable Content in 9ms (Views: 0.1ms | ActiveRecord: 3.0ms (2 queries, 0 cached) | GC: 0.2ms)
+
+
+  [1m[36mProject Count (17.4ms)[0m  [1m[34mSELECT COUNT(*) FROM "projects" /*application='Memcp'*/[0m
+  [1m[36mMemoryRecord Count (1.7ms)[0m  [1m[34mSELECT COUNT(*) FROM "memory_records" /*application='Memcp'*/[0m
+Started POST "/save" for 127.0.0.1 at 2025-11-04 10:06:01 +0300
+Processing by MemoryController#save as */*
+  Parameters: {"project_key"=>"[FILTERED]", "task_external_id"=>"CS-214", "kind"=>"fact", "content"=>"Причина nil: расхождение delay_unit/trigger_delay_unit", "scope"=>["cart_sessions", "settings"], "tags"=>["bugfix", "unit"], "quality"=>{"novelty"=>0.74, "dup"=>0.06, "usefulness"=>0.81}, "ttl"=>"2026-06-01T00:00:00Z", "meta"=>{"patch_sha"=>"abc123", "source_dialog_id"=>"dlg-1"}, "memory"=>{"project_key"=>"[FILTERED]", "task_external_id"=>"CS-214", "kind"=>"fact", "content"=>"Причина nil: расхождение delay_unit/trigger_delay_unit", "scope"=>["cart_sessions", "settings"], "tags"=>["bugfix", "unit"], "quality"=>{"novelty"=>0.74, "dup"=>0.06, "usefulness"=>0.81}, "ttl"=>"2026-06-01T00:00:00Z", "meta"=>{"patch_sha"=>"abc123", "source_dialog_id"=>"dlg-1"}}}
+  [1m[36mProject Load (0.3ms)[0m  [1m[34mSELECT "projects".* FROM "projects" WHERE "projects"."key" = 'demo' LIMIT 1 /*action='save',application='Memcp',controller='memory'*/[0m
+  ↳ app/controllers/memory_controller.rb:119:in `save'
+  [1m[36mTRANSACTION (0.1ms)[0m  [1m[35mBEGIN /*action='save',application='Memcp',controller='memory'*/[0m
+  ↳ app/controllers/memory_controller.rb:124:in `save'
+  [1m[36mProject Exists? (1.1ms)[0m  [1m[34mSELECT 1 AS one FROM "projects" WHERE "projects"."path" = 'demo' LIMIT 1 /*action='save',application='Memcp',controller='memory'*/[0m
+  ↳ app/controllers/memory_controller.rb:124:in `save'
+  [1m[36mProject Create (0.8ms)[0m  [1m[32mINSERT INTO "projects" ("name", "path", "created_at", "updated_at", "key", "settings") VALUES ('demo', 'demo', '2025-11-04 07:06:01.905566', '2025-11-04 07:06:01.905566', 'demo', '{}') RETURNING "id" /*action='save',application='Memcp',controller='memory'*/[0m
+  ↳ app/controllers/memory_controller.rb:124:in `save'
+  [1m[36mTRANSACTION (1.0ms)[0m  [1m[35mCOMMIT /*action='save',application='Memcp',controller='memory'*/[0m
+  ↳ app/controllers/memory_controller.rb:124:in `save'
+  [1m[36mTRANSACTION (0.2ms)[0m  [1m[35mBEGIN /*action='save',application='Memcp',controller='memory'*/[0m
+  ↳ app/controllers/memory_controller.rb:140:in `save'
+  [1m[36mProject Load (1.3ms)[0m  [1m[34mSELECT "projects".* FROM "projects" WHERE "projects"."id" = 1 LIMIT 1 /*action='save',application='Memcp',controller='memory'*/[0m
+  ↳ app/controllers/memory_controller.rb:140:in `save'
+  [1m[36mMemoryRecord Create (1.6ms)[0m  [1m[32mINSERT INTO "memory_records" ("project_id", "content", "embedding", "metadata", "created_at", "updated_at", "task_external_id", "kind", "owner", "ttl", "quality", "meta", "scope", "tags") VALUES (1, 'Причина nil: расхождение delay_unit/trigger_delay_unit', NULL, '{}', '2025-11-04 07:06:01.934153', '2025-11-04 07:06:01.934153', 'CS-214', 'fact', NULL, '2026-06-01 00:00:00', '{"novelty":0.74,"dup":0.06,"usefulness":0.81}', '{"patch_sha":"abc123","source_dialog_id":"dlg-1"}', '{cart_sessions,settings}', '{bugfix,unit}') RETURNING "id" /*action='save',application='Memcp',controller='memory'*/[0m
+  ↳ app/controllers/memory_controller.rb:140:in `save'
+  [1m[36mTRANSACTION (1.0ms)[0m  [1m[35mCOMMIT /*action='save',application='Memcp',controller='memory'*/[0m
+  ↳ app/controllers/memory_controller.rb:140:in `save'
+Completed 201 Created in 52ms (Views: 0.2ms | ActiveRecord: 13.5ms (5 queries, 0 cached) | GC: 0.0ms)
+
+
+Started POST "/recall" for 127.0.0.1 at 2025-11-04 10:06:04 +0300
+Processing by MemoryController#recall as */*
+  Parameters: {"project_key"=>"[FILTERED]", "task_external_id"=>"CS-214", "repo_path"=>"app/services/cart_sessions", "symbols"=>["CartSessions::Setting#trigger_delay_time_in_minutes"], "signals"=>["nil-delay", "unit-mismatch"], "limit_tokens"=>"[FILTERED]", "memory"=>{"project_key"=>"[FILTERED]", "task_external_id"=>"CS-214", "repo_path"=>"app/services/cart_sessions", "symbols"=>["CartSessions::Setting#trigger_delay_time_in_minutes"], "signals"=>["nil-delay", "unit-mismatch"], "limit_tokens"=>"[FILTERED]"}}
+  [1m[36mProject Load (0.4ms)[0m  [1m[34mSELECT "projects".* FROM "projects" WHERE "projects"."key" = 'demo' LIMIT 1 /*action='recall',application='Memcp',controller='memory'*/[0m
+  ↳ app/controllers/memory_controller.rb:18:in `recall'
+  [1m[36mMemoryRecord Load (9.0ms)[0m  [1m[34mSELECT "memory_records".* FROM "memory_records" WHERE (ttl IS NULL OR ttl > '2025-11-04 07:06:04.253885') AND "memory_records"."project_id" = 1 AND "memory_records"."task_external_id" = 'CS-214' AND (content ILIKE '%CS-214 CartSessions::Setting#trigger_delay_time_in_minutes nil-delay unit-mismatch%') AND (scope && 'app', 'services', 'cart_sessions') AND (tags && 'nil-delay', 'unit-mismatch') LIMIT 50 /*action='recall',application='Memcp',controller='memory'*/[0m
+  ↳ app/controllers/memory_controller.rb:52:in `recall'
+Completed 500 Internal Server Error in 13ms (ActiveRecord: 9.4ms (2 queries, 0 cached) | GC: 0.0ms)
+
+
+  
+ActiveRecord::StatementInvalid (PG::InvalidTextRepresentation: ERROR:  malformed array literal: "app"
+LINE 1: ..._minutes nil-delay unit-mismatch%') AND (scope && 'app', 'se...
+                                                             ^
+DETAIL:  Array value must start with "{" or dimension information.
+)
+Caused by: PG::InvalidTextRepresentation (ERROR:  malformed array literal: "app"
+LINE 1: ..._minutes nil-delay unit-mismatch%') AND (scope && 'app', 'se...
+                                                             ^
+DETAIL:  Array value must start with "{" or dimension information.
+)
+
+Information for: ActiveRecord::StatementInvalid (PG::InvalidTextRepresentation: ERROR:  malformed array literal: "app"
+LINE 1: ..._minutes nil-delay unit-mismatch%') AND (scope && 'app', 'se...
+                                                             ^
+DETAIL:  Array value must start with "{" or dimension information.
+):
+  
+
+Information for cause: PG::InvalidTextRepresentation (ERROR:  malformed array literal: "app"
+LINE 1: ..._minutes nil-delay unit-mismatch%') AND (scope && 'app', 'se...
+                                                             ^
+DETAIL:  Array value must start with "{" or dimension information.
+):
+  
+app/controllers/memory_controller.rb:52:in `recall'
+Started POST "/recall" for 127.0.0.1 at 2025-11-04 10:06:09 +0300
+Processing by MemoryController#recall as */*
+  Parameters: {"project_key"=>"[FILTERED]", "task_external_id"=>"CS-214", "memory"=>{"project_key"=>"[FILTERED]", "task_external_id"=>"CS-214"}}
+  [1m[36mProject Load (0.4ms)[0m  [1m[34mSELECT "projects".* FROM "projects" WHERE "projects"."key" = 'demo' LIMIT 1 /*action='recall',application='Memcp',controller='memory'*/[0m
+  ↳ app/controllers/memory_controller.rb:18:in `recall'
+  [1m[36mMemoryRecord Load (0.4ms)[0m  [1m[34mSELECT "memory_records".* FROM "memory_records" WHERE (ttl IS NULL OR ttl > '2025-11-04 07:06:09.774060') AND "memory_records"."project_id" = 1 AND "memory_records"."task_external_id" = 'CS-214' AND (content ILIKE '%CS-214%') LIMIT 50 /*action='recall',application='Memcp',controller='memory'*/[0m
+  ↳ app/controllers/memory_controller.rb:52:in `recall'
+Completed 200 OK in 3ms (Views: 0.1ms | ActiveRecord: 0.8ms (2 queries, 0 cached) | GC: 0.0ms)
+
+
+  [1m[36mMemoryRecord Load (1.5ms)[0m  [1m[34mSELECT "memory_records".* FROM "memory_records" ORDER BY "memory_records"."id" ASC LIMIT 1 /*application='Memcp'*/[0m
+  [1m[36mProject Load (0.5ms)[0m  [1m[34mSELECT "projects".* FROM "projects" WHERE "projects"."key" = 'demo' LIMIT 1 /*application='Memcp'*/[0m
+  [1m[36mMemoryRecord Count (1.0ms)[0m  [1m[34mSELECT COUNT(*) FROM "memory_records" WHERE "memory_records"."project_id" = 1 /*application='Memcp'*/[0m
+Started POST "/recall" for 127.0.0.1 at 2025-11-04 10:06:17 +0300
+Processing by MemoryController#recall as */*
+  Parameters: {"project_key"=>"[FILTERED]", "memory"=>{"project_key"=>"[FILTERED]"}}
+  [1m[36mProject Load (0.4ms)[0m  [1m[34mSELECT "projects".* FROM "projects" WHERE "projects"."key" = 'demo' LIMIT 1 /*action='recall',application='Memcp',controller='memory'*/[0m
+  ↳ app/controllers/memory_controller.rb:18:in `recall'
+  [1m[36mMemoryRecord Load (0.4ms)[0m  [1m[34mSELECT "memory_records".* FROM "memory_records" WHERE (ttl IS NULL OR ttl > '2025-11-04 07:06:17.795772') AND "memory_records"."project_id" = 1 LIMIT 50 /*action='recall',application='Memcp',controller='memory'*/[0m
+  ↳ app/controllers/memory_controller.rb:52:in `recall'
+  [1m[36mMemoryRecord Count (0.4ms)[0m  [1m[34mSELECT COUNT(*) FROM (SELECT 1 AS one FROM "memory_records" WHERE (ttl IS NULL OR ttl > '2025-11-04 07:06:17.795772') AND "memory_records"."project_id" = 1 LIMIT 50) subquery_for_count /*action='recall',application='Memcp',controller='memory'*/[0m
+  ↳ app/controllers/memory_controller.rb:89:in `recall'
+Completed 200 OK in 5ms (Views: 0.1ms | ActiveRecord: 1.2ms (3 queries, 0 cached) | GC: 0.0ms)
+
+
+Started POST "/recall" for 127.0.0.1 at 2025-11-04 10:06:30 +0300
+Processing by MemoryController#recall as */*
+  Parameters: {"project_key"=>"[FILTERED]", "task_external_id"=>"CS-214", "memory"=>{"project_key"=>"[FILTERED]", "task_external_id"=>"CS-214"}}
+  [1m[36mProject Load (0.2ms)[0m  [1m[34mSELECT "projects".* FROM "projects" WHERE "projects"."key" = 'demo' LIMIT 1 /*action='recall',application='Memcp',controller='memory'*/[0m
+  ↳ app/controllers/memory_controller.rb:18:in `recall'
+  [1m[36mMemoryRecord Load (1.8ms)[0m  [1m[34mSELECT "memory_records".* FROM "memory_records" WHERE (ttl IS NULL OR ttl > '2025-11-04 07:06:30.145163') AND "memory_records"."project_id" = 1 AND "memory_records"."task_external_id" = 'CS-214' AND (content ILIKE '%CS-214%') ORDER BY "memory_records"."created_at" DESC LIMIT 50 /*action='recall',application='Memcp',controller='memory'*/[0m
+  ↳ app/controllers/memory_controller.rb:52:in `recall'
+Completed 200 OK in 15ms (Views: 0.1ms | ActiveRecord: 4.9ms (2 queries, 0 cached) | GC: 0.4ms)
+
+
+Started POST "/save" for 127.0.0.1 at 2025-11-04 10:06:31 +0300
+Processing by MemoryController#save as */*
+  Parameters: {"project_key"=>"[FILTERED]", "kind"=>"fewshot", "content"=>"1. Найти nil\n2. Сверить units\n3. Написать тест", "scope"=>["cart_sessions"], "tags"=>["bugfix", "test"], "meta"=>{"title"=>"Fix nil delay mapping", "patch_sha"=>"sha:abc123"}, "memory"=>{"project_key"=>"[FILTERED]", "kind"=>"fewshot", "content"=>"1. Найти nil\n2. Сверить units\n3. Написать тест", "scope"=>["cart_sessions"], "tags"=>["bugfix", "test"], "meta"=>{"title"=>"Fix nil delay mapping", "patch_sha"=>"sha:abc123"}}}
+  [1m[36mProject Load (0.6ms)[0m  [1m[34mSELECT "projects".* FROM "projects" WHERE "projects"."key" = 'demo' LIMIT 1 /*action='save',application='Memcp',controller='memory'*/[0m
+  ↳ app/controllers/memory_controller.rb:119:in `save'
+  [1m[36mTRANSACTION (0.3ms)[0m  [1m[35mBEGIN /*action='save',application='Memcp',controller='memory'*/[0m
+  ↳ app/controllers/memory_controller.rb:124:in `save'
+  [1m[36mTRANSACTION (0.1ms)[0m  [1m[35mCOMMIT /*action='save',application='Memcp',controller='memory'*/[0m
+  ↳ app/controllers/memory_controller.rb:124:in `save'
+  [1m[36mTRANSACTION (0.2ms)[0m  [1m[35mBEGIN /*action='save',application='Memcp',controller='memory'*/[0m
+  ↳ app/controllers/memory_controller.rb:140:in `save'
+  [1m[36mProject Load (3.1ms)[0m  [1m[34mSELECT "projects".* FROM "projects" WHERE "projects"."id" = 1 LIMIT 1 /*action='save',application='Memcp',controller='memory'*/[0m
+  ↳ app/controllers/memory_controller.rb:140:in `save'
+  [1m[36mMemoryRecord Create (0.7ms)[0m  [1m[32mINSERT INTO "memory_records" ("project_id", "content", "embedding", "metadata", "created_at", "updated_at", "task_external_id", "kind", "owner", "ttl", "quality", "meta", "scope", "tags") VALUES (1, '1. Найти nil
+2. Сверить units
+3. Написать тест', NULL, '{}', '2025-11-04 07:06:31.903027', '2025-11-04 07:06:31.903027', NULL, 'fewshot', NULL, NULL, '{}', '{"title":"Fix nil delay mapping","patch_sha":"sha:abc123"}', '{cart_sessions}', '{bugfix,test}') RETURNING "id" /*action='save',application='Memcp',controller='memory'*/[0m
+  ↳ app/controllers/memory_controller.rb:140:in `save'
+  [1m[36mTRANSACTION (8.4ms)[0m  [1m[35mCOMMIT /*action='save',application='Memcp',controller='memory'*/[0m
+  ↳ app/controllers/memory_controller.rb:140:in `save'
+Completed 201 Created in 41ms (Views: 0.2ms | ActiveRecord: 18.6ms (3 queries, 0 cached) | GC: 1.4ms)
+
+
+Started POST "/recall" for 127.0.0.1 at 2025-11-04 10:06:33 +0300
+Processing by MemoryController#recall as */*
+  Parameters: {"project_key"=>"[FILTERED]", "limit_tokens"=>"[FILTERED]", "memory"=>{"project_key"=>"[FILTERED]", "limit_tokens"=>"[FILTERED]"}}
+  [1m[36mProject Load (0.5ms)[0m  [1m[34mSELECT "projects".* FROM "projects" WHERE "projects"."key" = 'demo' LIMIT 1 /*action='recall',application='Memcp',controller='memory'*/[0m
+  ↳ app/controllers/memory_controller.rb:18:in `recall'
+  [1m[36mMemoryRecord Load (0.4ms)[0m  [1m[34mSELECT "memory_records".* FROM "memory_records" WHERE (ttl IS NULL OR ttl > '2025-11-04 07:06:33.066186') AND "memory_records"."project_id" = 1 ORDER BY "memory_records"."created_at" DESC LIMIT 50 /*action='recall',application='Memcp',controller='memory'*/[0m
+  ↳ app/controllers/memory_controller.rb:52:in `recall'
+  [1m[36mMemoryRecord Count (0.4ms)[0m  [1m[34mSELECT COUNT(*) FROM (SELECT 1 AS one FROM "memory_records" WHERE (ttl IS NULL OR ttl > '2025-11-04 07:06:33.066186') AND "memory_records"."project_id" = 1 LIMIT 50) subquery_for_count /*action='recall',application='Memcp',controller='memory'*/[0m
+  ↳ app/controllers/memory_controller.rb:89:in `recall'
+Completed 200 OK in 5ms (Views: 0.1ms | ActiveRecord: 1.3ms (3 queries, 0 cached) | GC: 0.2ms)
+
+
+Started POST "/recall" for 127.0.0.1 at 2025-11-04 10:06:45 +0300
+Processing by MemoryController#recall as */*
+  Parameters: {"project_key"=>"[FILTERED]", "task_external_id"=>"CS-214", "memory"=>{"project_key"=>"[FILTERED]", "task_external_id"=>"CS-214"}}
+  [1m[36mProject Load (0.2ms)[0m  [1m[34mSELECT "projects".* FROM "projects" WHERE "projects"."key" = 'demo' LIMIT 1 /*action='recall',application='Memcp',controller='memory'*/[0m
+  ↳ app/controllers/memory_controller.rb:18:in `recall'
+  [1m[36mMemoryRecord Load (0.3ms)[0m  [1m[34mSELECT "memory_records".* FROM "memory_records" WHERE (ttl IS NULL OR ttl > '2025-11-04 07:06:45.746986') AND "memory_records"."project_id" = 1 AND "memory_records"."task_external_id" = 'CS-214' ORDER BY "memory_records"."created_at" DESC LIMIT 50 /*action='recall',application='Memcp',controller='memory'*/[0m
+  ↳ app/controllers/memory_controller.rb:52:in `recall'
+  [1m[36mMemoryRecord Count (0.3ms)[0m  [1m[34mSELECT COUNT(*) FROM (SELECT 1 AS one FROM "memory_records" WHERE (ttl IS NULL OR ttl > '2025-11-04 07:06:45.746986') AND "memory_records"."project_id" = 1 AND "memory_records"."task_external_id" = 'CS-214' LIMIT 50) subquery_for_count /*action='recall',application='Memcp',controller='memory'*/[0m
+  ↳ app/controllers/memory_controller.rb:89:in `recall'
+Completed 200 OK in 17ms (Views: 0.1ms | ActiveRecord: 4.9ms (3 queries, 0 cached) | GC: 0.0ms)
+
+
+Started POST "/recall" for 127.0.0.1 at 2025-11-04 10:06:46 +0300
+Processing by MemoryController#recall as */*
+  Parameters: {"project_key"=>"[FILTERED]", "task_external_id"=>"CS-214", "signals"=>["bugfix"], "memory"=>{"project_key"=>"[FILTERED]", "task_external_id"=>"CS-214", "signals"=>["bugfix"]}}
+  [1m[36mProject Load (0.4ms)[0m  [1m[34mSELECT "projects".* FROM "projects" WHERE "projects"."key" = 'demo' LIMIT 1 /*action='recall',application='Memcp',controller='memory'*/[0m
+  ↳ app/controllers/memory_controller.rb:18:in `recall'
+  [1m[36mMemoryRecord Load (0.8ms)[0m  [1m[34mSELECT "memory_records".* FROM "memory_records" WHERE (ttl IS NULL OR ttl > '2025-11-04 07:06:46.708217') AND "memory_records"."project_id" = 1 AND "memory_records"."task_external_id" = 'CS-214' AND (content ILIKE '%bugfix%') AND (tags && 'bugfix') ORDER BY "memory_records"."created_at" DESC LIMIT 50 /*action='recall',application='Memcp',controller='memory'*/[0m
+  ↳ app/controllers/memory_controller.rb:52:in `recall'
+Completed 500 Internal Server Error in 7ms (ActiveRecord: 1.2ms (2 queries, 0 cached) | GC: 3.5ms)
+
+
+  
+ActiveRecord::StatementInvalid (PG::InvalidTextRepresentation: ERROR:  malformed array literal: "bugfix"
+LINE 1: ...-214' AND (content ILIKE '%bugfix%') AND (tags && 'bugfix') ...
+                                                             ^
+DETAIL:  Array value must start with "{" or dimension information.
+)
+Caused by: PG::InvalidTextRepresentation (ERROR:  malformed array literal: "bugfix"
+LINE 1: ...-214' AND (content ILIKE '%bugfix%') AND (tags && 'bugfix') ...
+                                                             ^
+DETAIL:  Array value must start with "{" or dimension information.
+)
+
+Information for: ActiveRecord::StatementInvalid (PG::InvalidTextRepresentation: ERROR:  malformed array literal: "bugfix"
+LINE 1: ...-214' AND (content ILIKE '%bugfix%') AND (tags && 'bugfix') ...
+                                                             ^
+DETAIL:  Array value must start with "{" or dimension information.
+):
+  
+
+Information for cause: PG::InvalidTextRepresentation (ERROR:  malformed array literal: "bugfix"
+LINE 1: ...-214' AND (content ILIKE '%bugfix%') AND (tags && 'bugfix') ...
+                                                             ^
+DETAIL:  Array value must start with "{" or dimension information.
+):
+  
+app/controllers/memory_controller.rb:52:in `recall'
+  [1m[36mMemoryRecord Load (1.9ms)[0m  [1m[34mSELECT "memory_records".* FROM "memory_records" WHERE "memory_records"."task_external_id" = 'CS-214' LIMIT 1 /*application='Memcp'*/[0m
+  [1m[36mProject Load (0.7ms)[0m  [1m[34mSELECT "projects".* FROM "projects" WHERE "projects"."key" = 'demo' LIMIT 1 /*application='Memcp'*/[0m
+  [1m[36mMemoryRecord Count (1.1ms)[0m  [1m[34mSELECT COUNT(*) FROM "memory_records" WHERE (ttl IS NULL OR ttl > '2025-11-04 07:06:58.093860') AND "memory_records"."project_id" = 1 AND "memory_records"."task_external_id" = 'CS-214' /*application='Memcp'*/[0m
+  [1m[36mMemoryRecord Exists? (0.3ms)[0m  [1m[34mSELECT 1 AS one FROM "memory_records" WHERE (ttl IS NULL OR ttl > '2025-11-04 07:06:58.093860') AND "memory_records"."project_id" = 1 AND "memory_records"."task_external_id" = 'CS-214' LIMIT 1 /*application='Memcp'*/[0m
+  [1m[36mMemoryRecord Load (0.4ms)[0m  [1m[34mSELECT "memory_records".* FROM "memory_records" WHERE (ttl IS NULL OR ttl > '2025-11-04 07:06:58.093860') AND "memory_records"."project_id" = 1 AND "memory_records"."task_external_id" = 'CS-214' ORDER BY "memory_records"."id" ASC LIMIT 1 /*application='Memcp'*/[0m
+Started POST "/recall" for 127.0.0.1 at 2025-11-04 10:06:58 +0300
+Processing by MemoryController#recall as */*
+  Parameters: {"project_key"=>"[FILTERED]", "task_external_id"=>"CS-214", "signals"=>["unit"], "memory"=>{"project_key"=>"[FILTERED]", "task_external_id"=>"CS-214", "signals"=>["unit"]}}
+  [1m[36mProject Load (0.4ms)[0m  [1m[34mSELECT "projects".* FROM "projects" WHERE "projects"."key" = 'demo' LIMIT 1 /*action='recall',application='Memcp',controller='memory'*/[0m
+  ↳ app/controllers/memory_controller.rb:18:in `recall'
+  [1m[36mMemoryRecord Load (0.4ms)[0m  [1m[34mSELECT "memory_records".* FROM "memory_records" WHERE (ttl IS NULL OR ttl > '2025-11-04 07:06:58.660992') AND "memory_records"."project_id" = 1 AND "memory_records"."task_external_id" = 'CS-214' AND (content ILIKE '%unit%') AND (tags && 'unit') ORDER BY "memory_records"."created_at" DESC LIMIT 50 /*action='recall',application='Memcp',controller='memory'*/[0m
+  ↳ app/controllers/memory_controller.rb:52:in `recall'
+Completed 500 Internal Server Error in 3ms (ActiveRecord: 0.7ms (2 queries, 0 cached) | GC: 0.0ms)
+
+
+  
+ActiveRecord::StatementInvalid (PG::InvalidTextRepresentation: ERROR:  malformed array literal: "unit"
+LINE 1: ...CS-214' AND (content ILIKE '%unit%') AND (tags && 'unit') OR...
+                                                             ^
+DETAIL:  Array value must start with "{" or dimension information.
+)
+Caused by: PG::InvalidTextRepresentation (ERROR:  malformed array literal: "unit"
+LINE 1: ...CS-214' AND (content ILIKE '%unit%') AND (tags && 'unit') OR...
+                                                             ^
+DETAIL:  Array value must start with "{" or dimension information.
+)
+
+Information for: ActiveRecord::StatementInvalid (PG::InvalidTextRepresentation: ERROR:  malformed array literal: "unit"
+LINE 1: ...CS-214' AND (content ILIKE '%unit%') AND (tags && 'unit') OR...
+                                                             ^
+DETAIL:  Array value must start with "{" or dimension information.
+):
+  
+
+Information for cause: PG::InvalidTextRepresentation (ERROR:  malformed array literal: "unit"
+LINE 1: ...CS-214' AND (content ILIKE '%unit%') AND (tags && 'unit') OR...
+                                                             ^
+DETAIL:  Array value must start with "{" or dimension information.
+):
+  
+app/controllers/memory_controller.rb:52:in `recall'
+Started POST "/recall" for 127.0.0.1 at 2025-11-04 10:07:48 +0300
+Processing by MemoryController#recall as */*
+  Parameters: {"project_key"=>"[FILTERED]", "memory"=>{"project_key"=>"[FILTERED]"}}
+  [1m[36mProject Load (0.4ms)[0m  [1m[34mSELECT "projects".* FROM "projects" WHERE "projects"."key" = 'demo' LIMIT 1 /*action='recall',application='Memcp',controller='memory'*/[0m
+  ↳ app/controllers/memory_controller.rb:18:in `recall'
+  [1m[36mMemoryRecord Load (0.3ms)[0m  [1m[34mSELECT "memory_records".* FROM "memory_records" WHERE (ttl IS NULL OR ttl > '2025-11-04 07:07:48.311545') AND "memory_records"."project_id" = 1 ORDER BY "memory_records"."created_at" DESC LIMIT 50 /*action='recall',application='Memcp',controller='memory'*/[0m
+  ↳ app/controllers/memory_controller.rb:52:in `recall'
+  [1m[36mMemoryRecord Count (0.3ms)[0m  [1m[34mSELECT COUNT(*) FROM (SELECT 1 AS one FROM "memory_records" WHERE (ttl IS NULL OR ttl > '2025-11-04 07:07:48.311545') AND "memory_records"."project_id" = 1 LIMIT 50) subquery_for_count /*action='recall',application='Memcp',controller='memory'*/[0m
+  ↳ app/controllers/memory_controller.rb:89:in `recall'
+Completed 200 OK in 4ms (Views: 0.1ms | ActiveRecord: 1.0ms (3 queries, 0 cached) | GC: 0.0ms)
+
+
