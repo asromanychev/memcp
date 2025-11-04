@@ -12,8 +12,8 @@ class MemoryRecord < ApplicationRecord
   scope :active, -> { where("ttl IS NULL OR ttl > ?", Time.current) }
   scope :for_project, ->(project_id) { where(project_id: project_id) }
   scope :by_kind, ->(kind) { where(kind: kind) if kind.present? }
-  scope :with_scope, ->(scopes) { where("scope && ?", Array(scopes)) if scopes.present? }
-  scope :with_tags, ->(tags) { where("tags && ?", Array(tags)) if tags.present? }
+  scope :with_scope, ->(scopes) { where("scope && ?", "{#{Array(scopes).join(',')}}") if scopes.present? }
+  scope :with_tags, ->(tags) { where("tags && ?", "{#{Array(tags).join(',')}}") if tags.present? }
   scope :search_content, ->(query) { where("content ILIKE ?", "%#{query}%") if query.present? }
   scope :for_task, ->(task_id) { where(task_external_id: task_id) if task_id.present? }
 
