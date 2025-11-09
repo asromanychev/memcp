@@ -48,6 +48,22 @@ RUN if bundle exec ruby -e "require 'bootsnap'"; then \
       bundle exec bootsnap precompile app/ lib/; \
     fi
 
+FROM base AS dev
+
+ENV RAILS_ENV=development \
+    RACK_ENV=development
+
+COPY Gemfile Gemfile.lock ./
+RUN bundle config unset deployment || true && \
+    bundle config unset without || true && \
+    bundle config set path "${BUNDLE_PATH}" && \
+    bundle install --jobs="$(nproc)" --retry=3
+
+COPY . .
+
+ENTRYPOINT ["./bin/docker-entrypoint"]
+CMD ["./bin/rails", "server", "-b", "0.0.0.0", "-p", "3001"]
+
 FROM base AS production
 
 COPY --from=builder ${BUNDLE_PATH} ${BUNDLE_PATH}

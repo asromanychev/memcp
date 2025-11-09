@@ -13,7 +13,8 @@ MVP Итерация 1: Минимально жизнеспособная вер
 
 ### Вариант A: Docker (рекомендуется)
 
-Требуется установленный Docker и Docker Compose (плагин `docker compose`).
+Требуется установленный Docker и Docker Compose (плагин `docker compose`).  
+Compose-файл использует `dev`-слой Dockerfile, в котором собраны **все** зависимости (включая `development`/`test`).
 
 1. Собрать и запустить все сервисы (Rails API, Solid Queue worker, PostgreSQL + pgvector):
    ```bash
@@ -25,8 +26,23 @@ MVP Итерация 1: Минимально жизнеспособная вер
 Полезные команды:
 
 - Остановка окружения: `docker compose down`
+- Повторная установка gems: `docker compose run --rm web bundle install`
 - Запуск тестов: `docker compose run --rm web bundle exec rspec`
 - Выполнение разовой команды Rails: `docker compose run --rm web ./bin/rails <command>`
+- Подключиться к базе: `docker compose exec db psql -U postgres memcp_development`
+
+> Порты сервисов заданы через ENV и по умолчанию не пересекаются со стандартными значениями:  
+> • API: `3101` (`MEMCP_WEB_PORT`)  
+> • PostgreSQL: `15432` (`MEMCP_DB_PORT`)  
+> При необходимости переопределите их при запуске, например `MEMCP_WEB_PORT=3200 MEMCP_DB_PORT=25432 docker compose up`.
+
+Solid Queue worker по умолчанию не стартует. Запустить его можно так:
+
+```bash
+docker compose --profile queue up
+```
+
+Перед этим убедитесь, что применены миграции Solid Queue (`rails solid_queue:install && rails db:migrate`).
 
 ### Вариант B: Локальная установка
 
@@ -46,6 +62,38 @@ rails server
 ```
 
 API также будет доступен на `http://localhost:3001`
+
+### Production-образ
+
+Финальный слой Dockerfile — `production`. В нём только runtime-зависимости и включён режим `RAILS_ENV=production`.
+
+```bash
+docker build --target production -t memcp:latest .
+```
+
+Минимальный пример запуска (потребуются переменные окружения с доступом к базе данных и ключу Rails):
+
+```bash
+docker run --rm \
+  -e RAILS_ENV=production \
+  -e RAILS_MASTER_KEY=<ваш_rails_master_key> \
+  -e DATABASE_URL=postgres://user:password@db:5432/memcp_production \
+  -p 3001:3001 \
+  memcp:latest
+```
+
+В production-окружении убедитесь, что база данных содержит расширение `vector`, и выполните миграции:
+
+```bash
+docker run --rm \
+  -e RAILS_ENV=production \
+  -e RAILS_MASTER_KEY=<ваш_rails_master_key> \
+  -e DATABASE_URL=postgres://user:password@db:5432/memcp_production \
+  memcp:latest \
+  bundle exec rails db:migrate
+```
+
+> ℹ️ Для production-развёртываний убедитесь, что база данных поддерживает расширение `vector`, и ключ `RAILS_MASTER_KEY` доступен контейнеру.
 
 ### 4. Настройка MCP-сервера в Cursor IDE
 

@@ -22,15 +22,16 @@ fi
 if [ -n "${DATABASE_URL:-}" ]; then
   db_host=$(ruby -e 'require "uri"; uri = URI(ENV["DATABASE_URL"]); puts(uri.host || "localhost")')
   db_port=$(ruby -e 'require "uri"; uri = URI(ENV["DATABASE_URL"]); puts(uri.port || 5432)')
+  db_user=$(ruby -e 'require "uri"; uri = URI(ENV["DATABASE_URL"]); puts(uri.user || "postgres")')
 
-  until pg_isready -q -h "$db_host" -p "$db_port"; do
+  until pg_isready -q -h "$db_host" -p "$db_port" -U "$db_user"; do
     echo "Waiting for database at ${db_host}:${db_port}..."
     sleep 1
   done
 fi
 
 # If running the rails server then create or migrate existing database
-if [ "${@: -2:1}" == "./bin/rails" ] && [ "${@: -1:1}" == "server" ]; then
+if [ "${1:-}" = "./bin/rails" ] && [ "${2:-}" = "server" ]; then
   ./bin/rails db:prepare
 fi
 
