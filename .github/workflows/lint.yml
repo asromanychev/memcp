@@ -19,12 +19,9 @@ jobs:
           ruby-version: '3.2'
           bundler-cache: true
 
-      - name: RuboCop
-        run: |
-          bundle exec rubocop -V || true
-          bundle exec rubocop --parallel -f github
+      - name: RuboCop (app + spec)
+        run: bundle exec rubocop app spec --fail-level A
 
       - name: Brakeman
-        run: |
-          bundle exec brakeman -q -w2
+        run: bundle exec brakeman -q
 

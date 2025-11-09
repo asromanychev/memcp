@@ -12,8 +12,8 @@ class MemoryRecord < ApplicationRecord
   scope :active, -> { where("ttl IS NULL OR ttl > ?", Time.current) }
   scope :for_project, ->(project_id) { where(project_id: project_id) }
   scope :by_kind, ->(kind) { where(kind: kind) if kind.present? }
-  scope :with_scope, ->(scopes) { where("scope && ?", "{#{Array(scopes).join(',')}}") if scopes.present? }
-  scope :with_tags, ->(tags) { where("tags && ?", "{#{Array(tags).join(',')}}") if tags.present? }
+  scope :with_scope, ->(scopes) { where("scope && ARRAY[?]::text[]", Array(scopes)) if scopes.present? }
+  scope :with_tags, ->(tags) { where("tags && ARRAY[?]::text[]", Array(tags)) if tags.present? }
   scope :search_content, ->(query) { where("content ILIKE ?", "%#{query}%") if query.present? }
   scope :for_task, ->(task_id) { where(task_external_id: task_id) if task_id.present? }
 
@@ -29,16 +29,15 @@ class MemoryRecord < ApplicationRecord
       relation = relation.search_content(query)
     end
 
-    # Фильтрация по scope (если repo_path указан)
-    if repo_path.present?
-      scopes = repo_path.split("/").reject(&:empty?)
-      relation = relation.with_scope(scopes) if scopes.any?
-    end
+    # Фильтрация по scope: repo_path и symbols
+    scopes = []
+    scopes.concat(repo_path.split("/").reject(&:empty?)) if repo_path.present?
+    scopes.concat(Array(symbols).compact_blank) if symbols.present?
+    relation = relation.with_scope(scopes) if scopes.any?
 
     # Фильтрация по signals как тегам
-    if signals.any?
-      relation = relation.with_tags(signals)
-    end
+    tag_filters = Array(signals).compact_blank
+    relation = relation.with_tags(tag_filters) if tag_filters.any?
 
     relation.order(created_at: :desc).limit(limit)
   end

@@ -1,130 +1,110 @@
-# frozen_string_literal: true
-
-class Memories::SaveService
-  def self.call(params:)
-    new(params).call
-  end
-
-  def initialize(params)
-    @project_key = params[:project_key] || params["project_key"]
-    @task_external_id = params[:task_external_id] || params["task_external_id"]
-    @kind = params[:kind] || params["kind"]
-    @content = params[:content] || params["content"]
-    @scope = params[:scope] || params["scope"] || []
-    @tags = params[:tags] || params["tags"] || []
-    @owner = params[:owner] || params["owner"]
-    @ttl = parse_ttl(params[:ttl] || params["ttl"])
-    @quality = params[:quality] || params["quality"] || {}
-    @meta = params[:meta] || params["meta"] || {}
-    @errors = []
-  end
-
-  def call
-    return self unless valid?
-
-    @result = save_record
-    self
-  rescue ActiveRecord::RecordInvalid => e
-    @errors.concat(e.record.errors.full_messages)
-    self
-  end
-
-  def success?
-    @errors.empty?
-  end
-
-  def errors
-    @errors
-  end
-
-  def result
-    @result
-  end
-
-  private
-
-  def valid?
-    if @project_key.blank?
-      @errors << "project_key is required"
-      return false
+module Memories
+  class SaveService
+    def self.call(params:)
+      new(params).call
     end
 
-    if @kind.blank?
-      @errors << "kind is required"
-      return false
+    attr_reader :errors, :result
+
+    def initialize(params)
+      @params = params || {}
+      @errors = []
+      @result = {}
     end
 
-    if @content.blank?
-      @errors << "content is required"
-      return false
+    def call
+      extract_attributes
+      validate!
+      return self if errors.any?
+
+      ActiveRecord::Base.transaction do
+        project = upsert_project
+        record = create_record(project)
+        @result = serialize_record(record)
+      end
+
+      self
+    rescue ActiveRecord::RecordInvalid => e
+      errors.concat(e.record.errors.full_messages)
+      self
+    rescue StandardError => e
+      errors << e.message
+      self
     end
 
-    unless MemoryRecord::KINDS.include?(@kind)
-      @errors << "kind must be one of: #{MemoryRecord::KINDS.join(', ')}"
-      return false
+    def success?
+      errors.empty?
     end
 
-    true
-  end
+    private
 
-  def save_record
-    project = find_or_create_project
-    record = create_memory_record(project)
+    attr_reader :params, :project_key, :task_external_id, :kind, :content,
+                :scope, :tags, :owner, :ttl, :quality, :meta
 
-    {
-      id: record.id,
-      project_id: project.id,
-      kind: record.kind,
-      content: record.content,
-      scope: record.scope,
-      tags: record.tags,
-      ttl: record.ttl,
-      quality: record.quality,
-      meta: record.meta
-    }
-  end
-
-  def find_or_create_project
-    project = Project.find_or_initialize_by(key: @project_key)
-    if project.new_record?
-      project.name = @project_key
-      project.path = @project_key # Используем key как path для новых проектов
+    def extract_attributes
+      @project_key = fetch_param(:project_key).presence
+      @task_external_id = fetch_param(:task_external_id).presence
+      @kind = fetch_param(:kind).presence
+      @content = fetch_param(:content).to_s
+      @scope = Array(fetch_param(:scope)).compact_blank
+      @tags = Array(fetch_param(:tags)).compact_blank
+      @owner = fetch_param(:owner).presence
+      @ttl = fetch_param(:ttl)
+      @quality = fetch_param(:quality).presence || {}
+      @meta = fetch_param(:meta).presence || {}
     end
-    project.save!
-    project
-  end
 
-  def create_memory_record(project)
-    record = MemoryRecord.new(
-      project_id: project.id,
-      task_external_id: @task_external_id,
-      kind: @kind,
-      content: @content,
-      scope: @scope,
-      tags: @tags,
-      owner: @owner,
-      ttl: @ttl,
-      quality: @quality,
-      meta: @meta
-    )
-
-    # NOTE: embeddings будут добавлены на следующей итерации (воркер/сервис)
-    record.save!
-    record
-  end
-
-  def parse_ttl(ttl_value)
-    return nil if ttl_value.blank?
-
-    case ttl_value
-    when String
-      Time.parse(ttl_value)
-    when Time, DateTime, ActiveSupport::TimeWithZone
-      ttl_value
-    else
-      nil
+    def validate!
+      errors << "project_key is required" if project_key.blank?
+      errors << "kind is required" if kind.blank?
+      errors << "content is required" if content.blank?
+      if kind.present? && !MemoryRecord::KINDS.include?(kind)
+        errors << "kind must be one of: #{MemoryRecord::KINDS.join(', ')}"
+      end
     end
-  rescue ArgumentError, TypeError
-    nil
+
+    def upsert_project
+      project = Project.find_or_initialize_by(key: project_key)
+      if project.new_record?
+        project.name = project_key
+        project.path = project_key
+      end
+      project.save!
+      project
+    end
+
+    def create_record(project)
+      MemoryRecord.create!(
+        project_id: project.id,
+        task_external_id: task_external_id,
+        kind: kind,
+        content: content,
+        scope: scope,
+        tags: tags,
+        owner: owner,
+        ttl: ttl,
+        quality: quality,
+        meta: meta
+      )
+    end
+
+    def serialize_record(record)
+      {
+        status: "success",
+        id: record.id,
+        project_id: record.project_id,
+        kind: record.kind,
+        content: record.content,
+        scope: record.scope,
+        tags: record.tags,
+        ttl: record.ttl,
+        quality: record.quality,
+        meta: record.meta
+      }
+    end
+
+    def fetch_param(key)
+      params[key] || params[key.to_s]
+    end
   end
 end

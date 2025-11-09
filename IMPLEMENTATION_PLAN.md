@@ -131,19 +131,20 @@ memcp/
 **Request:**
 ```json
 {
-  "query": "search query",
-  "project_path": "/path/to/project"
+  "memory": {
+    "project_key": "demo",
+    "symbols": ["cart_sessions"]
+  }
 }
 ```
 
 **Response:**
 ```json
 {
-  "status": "success",
-  "message": "Recall method called (stub)",
-  "query": "search query",
-  "project_path": "/path/to/project",
-  "results": []
+  "facts": [],
+  "few_shots": [],
+  "links": [],
+  "confidence": 0.0
 }
 ```
 
@@ -153,9 +154,16 @@ memcp/
 **Request:**
 ```json
 {
-  "content": "content to save",
-  "project_path": "/path/to/project",
-  "metadata": {}
+  "memory": {
+    "project_key": "demo",
+    "task_external_id": "T-1",
+    "kind": "fact",
+    "content": "Content to save",
+    "scope": ["cart", "sessions"],
+    "tags": ["bugfix"],
+    "owner": "ai",
+    "meta": { "dialog_id": "xyz" }
+  }
 }
 ```
 
@@ -163,8 +171,15 @@ memcp/
 ```json
 {
   "status": "success",
-  "message": "Save method called (stub)",
-  "payload": {...}
+  "id": 1,
+  "project_id": 1,
+  "kind": "fact",
+  "content": "Content to save",
+  "scope": ["cart", "sessions"],
+  "tags": ["bugfix"],
+  "ttl": null,
+  "quality": {},
+  "meta": { "dialog_id": "xyz" }
 }
 ```
 

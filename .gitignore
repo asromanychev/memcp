@@ -1,0 +1,4 @@
+log/development.log
+log/test.log
+tmp/pids/server.pid
+
