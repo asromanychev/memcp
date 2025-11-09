@@ -1,6 +1,11 @@
 # Omakase Ruby styling for Rails
 inherit_gem: { rubocop-rails-omakase: rubocop.yml }
 
+# Исключаем вспомогательный каталог insales_atlas из проверки стиля
+AllCops:
+  Exclude:
+    - "insales_atlas/**/*"
+
 # Overwrite or add rules to create your own house style
 #
 # # Use `[a, [b, c]]` not `[ a, [ b, c ] ]`
