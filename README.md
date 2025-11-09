@@ -11,15 +11,28 @@ MVP Итерация 1: Минимально жизнеспособная вер
 
 ## Быстрый старт
 
-### 1. Установка зависимостей
+### Вариант A: Docker (рекомендуется)
+
+Требуется установленный Docker и Docker Compose (плагин `docker compose`).
+
+1. Собрать и запустить все сервисы (Rails API, Solid Queue worker, PostgreSQL + pgvector):
+   ```bash
+   docker compose up --build
+   ```
+2. После первого запуска дополнительно ничего делать не нужно — контейнеры выполнят `bundle install` и `rails db:prepare` автоматически.
+3. API будет доступен на `http://localhost:3001`, база данных — на `localhost:5432`.
+
+Полезные команды:
+
+- Остановка окружения: `docker compose down`
+- Запуск тестов: `docker compose run --rm web bundle exec rspec`
+- Выполнение разовой команды Rails: `docker compose run --rm web ./bin/rails <command>`
+
+### Вариант B: Локальная установка
 
 ```bash
 bundle install
-```
 
-### 2. Настройка базы данных
-
-```bash
 # Создайте базу данных PostgreSQL
 sudo -u postgres psql -c "CREATE DATABASE memcp_development;"
 sudo -u postgres psql -d memcp_development -c "CREATE EXTENSION IF NOT EXISTS vector;"
@@ -27,15 +40,12 @@ sudo -u postgres psql -d memcp_development -c "CREATE EXTENSION IF NOT EXISTS ve
 # Запустите миграции
 rails db:create
 rails db:migrate
-```
 
-### 3. Запуск Rails API
-
-```bash
+# Запуск Rails API
 rails server
 ```
 
-API будет доступен на `http://localhost:3001`
+API также будет доступен на `http://localhost:3001`
 
 ### 4. Настройка MCP-сервера в Cursor IDE
 

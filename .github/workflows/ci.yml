@@ -73,3 +73,15 @@ jobs:
       - name: Lint code for consistent style
         run: bundle exec rubocop app spec --fail-level A
 
+  docker:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Build Docker images
+        run: docker compose build web worker
+
+      - name: Validate docker compose configuration
+        run: docker compose config
+

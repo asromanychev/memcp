@@ -6,6 +6,29 @@ if [ -z "${LD_PRELOAD+x}" ]; then
     export LD_PRELOAD
 fi
 
+# Ensure requested Bundler version is present
+if [ -n "${BUNDLER_VERSION:-}" ]; then
+  if ! gem list -i bundler -v "${BUNDLER_VERSION}" > /dev/null 2>&1; then
+    gem install bundler -v "${BUNDLER_VERSION}" --no-document
+  fi
+fi
+
+# Ensure Ruby gems are installed
+if [ -f "Gemfile" ]; then
+  bundle check || bundle install
+fi
+
+# Wait for the database to be ready when DATABASE_URL is provided
+if [ -n "${DATABASE_URL:-}" ]; then
+  db_host=$(ruby -e 'require "uri"; uri = URI(ENV["DATABASE_URL"]); puts(uri.host || "localhost")')
+  db_port=$(ruby -e 'require "uri"; uri = URI(ENV["DATABASE_URL"]); puts(uri.port || 5432)')
+
+  until pg_isready -q -h "$db_host" -p "$db_port"; do
+    echo "Waiting for database at ${db_host}:${db_port}..."
+    sleep 1
+  done
+fi
+
 # If running the rails server then create or migrate existing database
 if [ "${@: -2:1}" == "./bin/rails" ] && [ "${@: -1:1}" == "server" ]; then
   ./bin/rails db:prepare

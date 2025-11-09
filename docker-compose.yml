@@ -1,0 +1,64 @@
+version: "3.9"
+
+services:
+  web:
+    build:
+      context: .
+    command: ./bin/rails server -b 0.0.0.0 -p 3001
+    environment:
+      RAILS_ENV: development
+      DATABASE_URL: postgres://postgres:postgres@db:5432/memcp_development
+      SOLID_QUEUE_DATABASE_URL: postgres://postgres:postgres@db:5432/memcp_development
+      RAILS_LOG_TO_STDOUT: "true"
+      RAILS_MAX_THREADS: 3
+    volumes:
+      - .:/app
+      - bundle:/bundle
+      - rails_tmp:/app/tmp
+    ports:
+      - "3001:3001"
+    depends_on:
+      db:
+        condition: service_healthy
+
+  worker:
+    build:
+      context: .
+    command: bundle exec ruby ./bin/jobs start
+    environment:
+      RAILS_ENV: development
+      DATABASE_URL: postgres://postgres:postgres@db:5432/memcp_development
+      SOLID_QUEUE_DATABASE_URL: postgres://postgres:postgres@db:5432/memcp_development
+      JOB_CONCURRENCY: 1
+    volumes:
+      - .:/app
+      - bundle:/bundle
+      - rails_tmp:/app/tmp
+    depends_on:
+      db:
+        condition: service_healthy
+      web:
+        condition: service_started
+
+  db:
+    image: ankane/pgvector:latest
+    environment:
+      POSTGRES_DB: memcp_development
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 5s
+
+volumes:
+  bundle:
+  postgres_data:
+  rails_tmp:
+
