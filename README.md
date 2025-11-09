@@ -130,6 +130,24 @@ docker run --rm \
 
 > ℹ️ Для production-развёртываний убедитесь, что база данных поддерживает расширение `vector`, и ключ `RAILS_MASTER_KEY` доступен контейнеру.
 
+### Подготовка перед сборкой Docker-образа
+
+Dockerfile содержит только системные зависимости (`python3`, `pip`, `cmake`), поэтому перед сборкой или запуском контейнера разработчику нужно вручную подготовить модель:
+
+```bash
+# локально, до docker build
+bin/setup_embeddings               # скачивает веса Qwen3 в tmp/embeddings
+# опционально проверить сервис
+MEMORY_EMBEDDING_PORT=8081 bin/embedding_server &
+curl -s http://127.0.0.1:8081/embed \
+     -H "Content-Type: application/json" \
+     -d '{"inputs":["embedding smoke test"]}' \
+     | jq '.embeddings[0] | length'
+kill %1   # остановить сервер
+```
+
+Затем можно собирать образ (`docker build ...`). Внутри контейнера модель уже лежит в `tmp/embeddings` тома/работающего каталога, и `bin/embedding_server` можно запускать аналогично.
+
 ### 4. Настройка MCP-сервера в Cursor IDE
 
 Добавьте в конфигурацию Cursor IDE (`~/.cursor/mcp.json` или через настройки):
