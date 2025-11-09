@@ -17,11 +17,14 @@ module Memories
       validate!
       return self if errors.any?
 
+      record = nil
       ActiveRecord::Base.transaction do
         project = upsert_project
         record = create_record(project)
         @result = serialize_record(record)
       end
+
+      Memories::GenerateEmbeddingJob.perform_later(memory_record_id: record.id) if record.present?
 
       self
     rescue ActiveRecord::RecordInvalid => e

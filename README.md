@@ -20,7 +20,7 @@ Compose-файл использует `dev`-слой Dockerfile, в которо
    ```bash
    docker compose up --build
    ```
-2. После первого запуска дополнительно ничего делать не нужно — контейнеры выполнят `bundle install` и `rails db:prepare` автоматически.
+2. После первого запуска дополнительно ничего делать не нужно — контейнеры выполнят `bundle install`, `rails db:prepare` и подготовку очереди (`db:create:queue`, `db:schema:load:queue`) автоматически.
 3. API будет доступен на `http://localhost:3001`, база данных — на `localhost:5432`.
 
 Полезные команды:
@@ -56,6 +56,8 @@ sudo -u postgres psql -d memcp_development -c "CREATE EXTENSION IF NOT EXISTS ve
 # Запустите миграции
 rails db:create
 rails db:migrate
+rails db:create:queue
+rails db:schema:load:queue
 
 # Запуск Rails API
 rails server
@@ -78,7 +80,7 @@ API также будет доступен на `http://localhost:3001`
 ### Быстрый старт (локально, включая embeddings)
 
 ```bash
-bin/setup          # устанавливает зависимости, миграции (запускает bin/dev автоматически)
+bin/setup          # устанавливает зависимости, миграции и очередь (запускает bin/dev автоматически)
 ```
 
 `bin/dev` запускает Rails и сервис embeddings через `Procfile.dev`. Для ручного запуска служб:
