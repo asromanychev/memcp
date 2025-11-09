@@ -63,6 +63,41 @@ rails server
 
 API также будет доступен на `http://localhost:3001`
 
+### Локальные embeddings (Qwen3 0.6B, Matryoshka 1024d)
+
+- Провайдер по умолчанию: `MEMORY_EMBEDDING_PROVIDER=local_1024`.
+- Модель Qwen3-Embedding-0.6B (квантизованная Q8_0) скачивается из репозитория [Qwen/Qwen3-Embedding-0.6B-GGUF](https://huggingface.co/Qwen/Qwen3-Embedding-0.6B-GGUF).  
+  Рекомендуемый файл: `Qwen3-Embedding-0.6B-Q8_0.gguf` (≈1.2 ГБ).
+- Путь к весам задаётся переменной `MEMORY_EMBEDDING_MODEL_PATH`. По умолчанию используется `tmp/embeddings/Qwen3-Embedding-0.6B-Q8_0.gguf`.
+- Для Matryoshka-режима установите `MEMORY_EMBEDDING_OUTPUT_DIM=1024` (значение по умолчанию совпадает со схемой БД).
+- Endpoint локального сервиса задаётся `MEMORY_EMBEDDING_ENDPOINT` (по умолчанию `http://127.0.0.1:8081/embed`).
+- Для скачивания модели используйте `bin/setup_embeddings` (поддерживает `HF_TOKEN` и проверку SHA256 через `MEMORY_EMBEDDING_MODEL_SHA256`).
+- Требования к окружению: `python3` (с поддержкой `venv`), `pip`, `cmake`, компилятор (`build-essential`/`gcc`). Скрипт `bin/embedding_server` создаёт виртуальное окружение `tmp/embedding-venv` и устанавливает зависимости из `embeddings/requirements.txt` (FastAPI, uvicorn, llama-cpp-python).
+- Заглушка для OpenAI (`openai_1536`) оставлена для будущего расширения; для неё потребуется `OPENAI_API_KEY`.
+
+### Быстрый старт (локально, включая embeddings)
+
+```bash
+bin/setup          # устанавливает зависимости, миграции (запускает bin/dev автоматически)
+```
+
+`bin/dev` запускает Rails и сервис embeddings через `Procfile.dev`. Для ручного запуска служб:
+
+```bash
+bin/setup_embeddings        # скачивает веса
+MEMORY_EMBEDDING_PORT=8081 bin/embedding_server
+bin/rails server
+```
+
+Проверка сервиса embeddings:
+
+```bash
+curl -X POST http://127.0.0.1:8081/embed \
+     -H "Content-Type: application/json" \
+     -d '{"inputs":["embedding smoke test"]}'
+```
+Ответ должен содержать массив `embeddings` длиной 1024.
+
 ### Production-образ
 
 Финальный слой Dockerfile — `production`. В нём только runtime-зависимости и включён режим `RAILS_ENV=production`.

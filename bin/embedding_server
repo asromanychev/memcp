@@ -1,0 +1,48 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+DEFAULT_MODEL_FILENAME="Qwen3-Embedding-0.6B-Q8_0.gguf"
+DEFAULT_MODEL_PATH="${ROOT_DIR}/tmp/embeddings/${DEFAULT_MODEL_FILENAME}"
+
+MODEL_PATH="${MEMORY_EMBEDDING_MODEL_PATH:-$DEFAULT_MODEL_PATH}"
+PORT="${MEMORY_EMBEDDING_PORT:-8081}"
+THREADS="${MEMORY_EMBEDDING_THREADS:-4}"
+OUTPUT_DIM="${MEMORY_EMBEDDING_OUTPUT_DIM:-1024}"
+VENV_DIR="${ROOT_DIR}/tmp/embedding-venv"
+
+if ! command -v python3 >/dev/null 2>&1; then
+  echo "python3 is required to launch the embedding server" >&2
+  exit 1
+fi
+
+"${ROOT_DIR}/bin/setup_embeddings"
+
+if [ ! -d "$VENV_DIR" ]; then
+  echo "Creating virtual environment for embedding server..."
+  if ! python3 -m venv "$VENV_DIR" >/dev/null 2>&1; then
+    rm -rf "$VENV_DIR"
+    echo "python3 -m venv is unavailable; installing virtualenv via pip..."
+    python3 -m pip install --user virtualenv
+    python3 -m virtualenv "$VENV_DIR"
+  fi
+fi
+
+"${VENV_DIR}/bin/pip" install --upgrade pip
+"${VENV_DIR}/bin/pip" install -r "${ROOT_DIR}/embeddings/requirements.txt"
+
+export MEMORY_EMBEDDING_MODEL_PATH="${MODEL_PATH}"
+export MEMORY_EMBEDDING_THREADS="${THREADS}"
+export MEMORY_EMBEDDING_OUTPUT_DIM="${OUTPUT_DIM}"
+
+echo "Starting embedding server on port ${PORT}"
+exec "${VENV_DIR}/bin/uvicorn" embeddings.server:create_app \
+  --host 0.0.0.0 \
+  --port "${PORT}" \
+  --reload-dir "${ROOT_DIR}/embeddings" \
+  --reload \
+  --factory \
+  --log-level "${MEMORY_EMBEDDING_LOG_LEVEL:-info}" \
+  --workers 1 \
+  "$@"
+

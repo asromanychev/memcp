@@ -2,6 +2,7 @@ class MemoryRecord < ApplicationRecord
   belongs_to :project
 
   has_neighbors :embedding
+  has_neighbors :embedding_1024
 
   KINDS = %w[fact fewshot pattern adr_link gotcha rule].freeze
 

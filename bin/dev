@@ -1,2 +1,14 @@
-#!/usr/bin/env ruby
-exec "./bin/rails", "server", *ARGV
+#!/usr/bin/env bash
+set -euo pipefail
+
+ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+
+if command -v foreman >/dev/null 2>&1; then
+  exec foreman start -f "${ROOT_DIR}/Procfile.dev" "$@"
+else
+  echo "foreman not found, starting embedding server and rails sequentially"
+  "${ROOT_DIR}/bin/embedding_server" &
+  EMBEDDING_PID=$!
+  trap 'kill $EMBEDDING_PID' EXIT INT TERM
+  exec "${ROOT_DIR}/bin/rails" server "$@"
+fi

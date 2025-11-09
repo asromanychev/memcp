@@ -16,6 +16,7 @@ ENV APP_ROOT=/rails \
 RUN apk add --no-cache \
       bash \
       build-base \
+      cmake \
       curl \
       git \
       libffi-dev \
@@ -24,6 +25,9 @@ RUN apk add --no-cache \
       nodejs \
       postgresql-client \
       postgresql-dev \
+      python3 \
+      py3-pip \
+      py3-virtualenv \
       tzdata \
       yaml-dev
 

@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2025_11_04_065856) do
+ActiveRecord::Schema[8.0].define(version: 2025_11_09_120000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "vector"
@@ -30,7 +30,9 @@ ActiveRecord::Schema[8.0].define(version: 2025_11_04_065856) do
     t.jsonb "meta", default: {}
     t.text "scope", default: [], array: true
     t.text "tags", default: [], array: true
+    t.vector "embedding_1024", limit: 1024
     t.index ["embedding"], name: "index_memory_records_on_embedding", opclass: :vector_cosine_ops, using: :ivfflat
+    t.index ["embedding_1024"], name: "index_memory_records_on_embedding_1024", opclass: :vector_cosine_ops, using: :ivfflat
     t.index ["kind"], name: "index_memory_records_on_kind"
     t.index ["metadata"], name: "index_memory_records_on_metadata", using: :gin
     t.index ["project_id"], name: "index_memory_records_on_project_id"

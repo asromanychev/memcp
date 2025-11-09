@@ -1,4 +1,8 @@
 log/development.log
 log/test.log
 tmp/pids/server.pid
+tmp/embeddings/
+tmp/embedding-venv/
+tmp/embedding-server.log
+embeddings/__pycache__/
 
