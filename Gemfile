@@ -46,4 +46,5 @@ group :development, :test do
 
   gem "rspec-rails", "~> 6.0.0"
   gem "bundler-audit", require: false
+  gem "webmock", "~> 3.23", require: false
 end
