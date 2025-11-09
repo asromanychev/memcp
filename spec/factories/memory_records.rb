@@ -14,11 +14,11 @@ FactoryBot.define do
     ttl { nil }
 
     trait :with_scope do
-      scope { ["app", "services"] }
+      scope { [ "app", "services" ] }
     end
 
     trait :with_tags do
-      tags { ["bugfix", "unit"] }
+      tags { [ "bugfix", "unit" ] }
     end
 
     trait :with_ttl do
