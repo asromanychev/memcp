@@ -1,12 +1,32 @@
-name: CI
+name: CI/CD
 
 on:
   pull_request:
+    types:
+      - opened
+      - synchronize
+      - reopened
+      - ready_for_review
   push:
-    branches: [ main ]
+    branches:
+      - main
+      - develop
+    tags:
+      - "v*"
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  packages: write
+  id-token: write
 
 jobs:
-  test:
+  prepare:
+    name: Prepare
     runs-on: ubuntu-latest
     services:
       postgres:
@@ -25,63 +45,462 @@ jobs:
     env:
       RAILS_ENV: test
       DATABASE_URL: postgres://postgres:postgres@localhost:5432/memcp_test
-
+      BUNDLE_WITHOUT: development
     steps:
-      - name: Checkout code
+      - name: Checkout repository
         uses: actions/checkout@v4
 
       - name: Set up Ruby
         uses: ruby/setup-ruby@v1
         with:
           ruby-version: .ruby-version
-          bundler-cache: true
+          bundler-cache: false
+
+      - name: Cache bundle
+        uses: actions/cache@v4
+        with:
+          path: vendor/bundle
+          key: bundle-${{ runner.os }}-${{ hashFiles('.ruby-version') }}-${{ hashFiles('Gemfile.lock') }}
+          restore-keys: |
+            bundle-${{ runner.os }}-
+
+      - name: Install dependencies
+        run: |
+          bundle config set path 'vendor/bundle'
+          bundle config set without 'development'
+          bundle install --jobs=4 --retry=3
 
       - name: Prepare database
-        run: bundle exec rails db:prepare
+        run: bin/rails db:prepare
 
-      - name: Run RSpec suite
-        run: bundle exec rspec
-
-  scan_ruby:
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Set up Ruby
-        uses: ruby/setup-ruby@v1
-        with:
-          ruby-version: .ruby-version
-          bundler-cache: true
-
-      - name: Scan for common Rails security vulnerabilities using static analysis
-        run: bundle exec brakeman -q
+      - name: Ensure schema is committed
+        run: |
+          if [ -f db/structure.sql ]; then
+            git diff --exit-code -- db/schema.rb db/structure.sql
+          else
+            git diff --exit-code -- db/schema.rb
+          fi
 
   lint:
+    name: Lint
     runs-on: ubuntu-latest
+    needs: prepare
+    env:
+      BUNDLE_WITHOUT: development
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Set up Ruby
-        uses: ruby/setup-ruby@v1
+      - uses: ruby/setup-ruby@v1
         with:
           ruby-version: .ruby-version
-          bundler-cache: true
+          bundler-cache: false
 
-      - name: Lint code for consistent style
-        run: bundle exec rubocop app spec --fail-level A
+      - uses: actions/cache@v4
+        with:
+          path: vendor/bundle
+          key: bundle-${{ runner.os }}-${{ hashFiles('.ruby-version') }}-${{ hashFiles('Gemfile.lock') }}
+          restore-keys: |
+            bundle-${{ runner.os }}-
 
-  docker:
+      - name: Install dependencies
+        run: |
+          bundle config set path 'vendor/bundle'
+          bundle config set without 'development'
+          bundle install --jobs=4 --retry=3
+
+      - name: Run Rubocop
+        run: bin/rubocop
+
+      - name: Validate autoloading
+        run: bin/rails zeitwerk:check
+
+  security:
+    name: Security
     runs-on: ubuntu-latest
+    needs: prepare
+    env:
+      BUNDLE_WITHOUT: development
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Build Docker images
-        run: docker compose build web worker
+      - uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: .ruby-version
+          bundler-cache: false
 
-      - name: Validate docker compose configuration
-        run: docker compose config
+      - uses: actions/cache@v4
+        with:
+          path: vendor/bundle
+          key: bundle-${{ runner.os }}-${{ hashFiles('.ruby-version') }}-${{ hashFiles('Gemfile.lock') }}
+          restore-keys: |
+            bundle-${{ runner.os }}-
+
+      - name: Install dependencies
+        run: |
+          bundle config set path 'vendor/bundle'
+          bundle config set without 'development'
+          bundle install --jobs=4 --retry=3
+
+      - name: Brakeman scan
+        run: bin/brakeman --quiet --no-summary --exit-on-warn
+
+      - name: Bundle audit
+        run: |
+          bundle exec bundle-audit update
+          bundle exec bundle-audit check
+
+  migrations_check:
+    name: Migrations
+    runs-on: ubuntu-latest
+    needs: prepare
+    services:
+      postgres:
+        image: ankane/pgvector:latest
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: memcp_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd="pg_isready -U postgres"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=5
+    env:
+      RAILS_ENV: test
+      DATABASE_URL: postgres://postgres:postgres@localhost:5432/memcp_test
+      BUNDLE_WITHOUT: development
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: .ruby-version
+          bundler-cache: false
+
+      - uses: actions/cache@v4
+        with:
+          path: vendor/bundle
+          key: bundle-${{ runner.os }}-${{ hashFiles('.ruby-version') }}-${{ hashFiles('Gemfile.lock') }}
+          restore-keys: |
+            bundle-${{ runner.os }}-
+
+      - name: Install dependencies
+        run: |
+          bundle config set path 'vendor/bundle'
+          bundle config set without 'development'
+          bundle install --jobs=4 --retry=3
+
+      - name: Apply migrations
+        run: |
+          bin/rails db:drop db:create db:migrate
+
+      - name: Ensure schema is committed
+        run: |
+          if [ -f db/structure.sql ]; then
+            git diff --exit-code -- db/schema.rb db/structure.sql
+          else
+            git diff --exit-code -- db/schema.rb
+          fi
+
+  test_unit:
+    name: Unit tests
+    runs-on: ubuntu-latest
+    needs: prepare
+    services:
+      postgres:
+        image: ankane/pgvector:latest
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: memcp_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd="pg_isready -U postgres"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=5
+    env:
+      RAILS_ENV: test
+      DATABASE_URL: postgres://postgres:postgres@localhost:5432/memcp_test
+      BUNDLE_WITHOUT: development
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: .ruby-version
+          bundler-cache: false
+
+      - uses: actions/cache@v4
+        with:
+          path: vendor/bundle
+          key: bundle-${{ runner.os }}-${{ hashFiles('.ruby-version') }}-${{ hashFiles('Gemfile.lock') }}
+          restore-keys: |
+            bundle-${{ runner.os }}-
+
+      - name: Install dependencies
+        run: |
+          bundle config set path 'vendor/bundle'
+          bundle config set without 'development'
+          bundle install --jobs=4 --retry=3
+
+      - name: Run unit test suite
+        run: bundle exec rspec --exclude-pattern "spec/requests/**/*_spec.rb"
+
+  test_integration:
+    name: Integration tests
+    runs-on: ubuntu-latest
+    needs: prepare
+    services:
+      postgres:
+        image: ankane/pgvector:latest
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: memcp_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd="pg_isready -U postgres"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=5
+    env:
+      RAILS_ENV: test
+      DATABASE_URL: postgres://postgres:postgres@localhost:5432/memcp_test
+      BUNDLE_WITHOUT: development
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: .ruby-version
+          bundler-cache: false
+
+      - uses: actions/cache@v4
+        with:
+          path: vendor/bundle
+          key: bundle-${{ runner.os }}-${{ hashFiles('.ruby-version') }}-${{ hashFiles('Gemfile.lock') }}
+          restore-keys: |
+            bundle-${{ runner.os }}-
+
+      - name: Install dependencies
+        run: |
+          bundle config set path 'vendor/bundle'
+          bundle config set without 'development'
+          bundle install --jobs=4 --retry=3
+
+      - name: Run integration test suite
+        run: bundle exec rspec spec/requests
+
+  build_image:
+    name: Build image
+    runs-on: ubuntu-latest
+    needs:
+      - lint
+      - security
+      - migrations_check
+      - test_unit
+      - test_integration
+    env:
+      REGISTRY_SERVER: ${{ secrets.REGISTRY_SERVER }}
+      REGISTRY_USERNAME: ${{ secrets.REGISTRY_USERNAME }}
+      REGISTRY_PASSWORD: ${{ secrets.REGISTRY_PASSWORD }}
+      REGISTRY_IMAGE: ${{ secrets.REGISTRY_IMAGE }}
+    outputs:
+      image_tag: ${{ steps.meta.outputs.image_tag }}
+      image: ${{ steps.meta.outputs.image }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Determine image tag
+        id: meta
+        run: |
+          if [[ "${GITHUB_REF}" == refs/tags/v* ]]; then
+            IMAGE_TAG="${GITHUB_REF_NAME}"
+          else
+            IMAGE_TAG="${GITHUB_SHA}"
+          fi
+          echo "image_tag=${IMAGE_TAG}" >> "${GITHUB_OUTPUT}"
+          if [ -n "${REGISTRY_IMAGE}" ]; then
+            echo "image=${REGISTRY_IMAGE}:${IMAGE_TAG}" >> "${GITHUB_OUTPUT}"
+          else
+            echo "image=memcp:${IMAGE_TAG}" >> "${GITHUB_OUTPUT}"
+          fi
+
+      - name: Log in to registry
+        if: ${{ env.REGISTRY_SERVER != '' && env.REGISTRY_USERNAME != '' }}
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY_SERVER }}
+          username: ${{ env.REGISTRY_USERNAME }}
+          password: ${{ env.REGISTRY_PASSWORD }}
+
+      - name: Build image
+        run: |
+          if [ -z "${REGISTRY_IMAGE}" ]; then
+            echo "REGISTRY_IMAGE secret is not configured; building local image for validation only." >&2
+          fi
+          docker build \
+            --tag "${{ steps.meta.outputs.image }}" \
+            --file Dockerfile \
+            .
+
+      - name: Push image
+        if: env.REGISTRY_IMAGE != ''
+        run: |
+          docker push "${REGISTRY_IMAGE}:${{ steps.meta.outputs.image_tag }}"
+
+  deploy_staging:
+    name: Deploy staging
+    runs-on: ubuntu-latest
+    needs: build_image
+    if: github.event_name == 'push' && github.ref == 'refs/heads/develop' && secrets.STAGING_BASE_URL != '' && secrets.REGISTRY_IMAGE != ''
+    env:
+      BUNDLE_WITHOUT: development
+      REGISTRY_IMAGE: ${{ needs.build_image.outputs.image }}
+      REGISTRY_SERVER: ${{ secrets.REGISTRY_SERVER }}
+      REGISTRY_USERNAME: ${{ secrets.REGISTRY_USERNAME }}
+      REGISTRY_PASSWORD: ${{ secrets.REGISTRY_PASSWORD }}
+      RAILS_MASTER_KEY: ${{ secrets.STAGING_RAILS_MASTER_KEY }}
+      STAGING_DATABASE_URL: ${{ secrets.STAGING_DATABASE_URL }}
+      STAGING_SOLID_QUEUE_DATABASE_URL: ${{ secrets.STAGING_SOLID_QUEUE_DATABASE_URL }}
+      STAGING_SOLID_CACHE_DATABASE_URL: ${{ secrets.STAGING_SOLID_CACHE_DATABASE_URL }}
+      STAGING_SOLID_CABLE_DATABASE_URL: ${{ secrets.STAGING_SOLID_CABLE_DATABASE_URL }}
+      STAGING_BASE_URL: ${{ secrets.STAGING_BASE_URL }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: .ruby-version
+          bundler-cache: false
+
+      - uses: actions/cache@v4
+        with:
+          path: vendor/bundle
+          key: bundle-${{ runner.os }}-${{ hashFiles('.ruby-version') }}-${{ hashFiles('Gemfile.lock') }}
+          restore-keys: |
+            bundle-${{ runner.os }}-
+
+      - name: Install dependencies
+        run: |
+          bundle config set path 'vendor/bundle'
+          bundle config set without 'development'
+          bundle install --jobs=4 --retry=3
+
+      - name: Deploy via Kamal
+        env:
+          KAMAL_REGISTRY_USERNAME: ${{ secrets.REGISTRY_USERNAME }}
+          KAMAL_REGISTRY_PASSWORD: ${{ secrets.REGISTRY_PASSWORD }}
+          KAMAL_REGISTRY_SERVER: ${{ secrets.REGISTRY_SERVER }}
+          DEPLOY_VERSION: ${{ needs.build_image.outputs.image_tag }}
+        run: |
+          bundle exec kamal deploy --destination staging --version "${DEPLOY_VERSION}"
+          bundle exec kamal run app --destination staging --version "${DEPLOY_VERSION}" -- bin/rails db:migrate
+
+  smoke_staging:
+    name: Smoke staging
+    runs-on: ubuntu-latest
+    needs: deploy_staging
+    if: needs.deploy_staging.result == 'success'
+    env:
+      STAGING_BASE_URL: ${{ secrets.STAGING_BASE_URL }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run staging smoke tests
+        run: bin/ci/smoke staging
+
+  deploy_production:
+    name: Deploy production
+    runs-on: ubuntu-latest
+    needs: build_image
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v') && secrets.PRODUCTION_BASE_URL != '' && secrets.REGISTRY_IMAGE != ''
+    env:
+      BUNDLE_WITHOUT: development
+      REGISTRY_IMAGE: ${{ needs.build_image.outputs.image }}
+      REGISTRY_SERVER: ${{ secrets.REGISTRY_SERVER }}
+      REGISTRY_USERNAME: ${{ secrets.REGISTRY_USERNAME }}
+      REGISTRY_PASSWORD: ${{ secrets.REGISTRY_PASSWORD }}
+      RAILS_MASTER_KEY: ${{ secrets.PRODUCTION_RAILS_MASTER_KEY }}
+      PRODUCTION_DATABASE_URL: ${{ secrets.PRODUCTION_DATABASE_URL }}
+      PRODUCTION_SOLID_QUEUE_DATABASE_URL: ${{ secrets.PRODUCTION_SOLID_QUEUE_DATABASE_URL }}
+      PRODUCTION_SOLID_CACHE_DATABASE_URL: ${{ secrets.PRODUCTION_SOLID_CACHE_DATABASE_URL }}
+      PRODUCTION_SOLID_CABLE_DATABASE_URL: ${{ secrets.PRODUCTION_SOLID_CABLE_DATABASE_URL }}
+      PRODUCTION_BASE_URL: ${{ secrets.PRODUCTION_BASE_URL }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: .ruby-version
+          bundler-cache: false
+
+      - uses: actions/cache@v4
+        with:
+          path: vendor/bundle
+          key: bundle-${{ runner.os }}-${{ hashFiles('.ruby-version') }}-${{ hashFiles('Gemfile.lock') }}
+          restore-keys: |
+            bundle-${{ runner.os }}-
+
+      - name: Install dependencies
+        run: |
+          bundle config set path 'vendor/bundle'
+          bundle config set without 'development'
+          bundle install --jobs=4 --retry=3
+
+      - name: Deploy via Kamal
+        env:
+          KAMAL_REGISTRY_USERNAME: ${{ secrets.REGISTRY_USERNAME }}
+          KAMAL_REGISTRY_PASSWORD: ${{ secrets.REGISTRY_PASSWORD }}
+          KAMAL_REGISTRY_SERVER: ${{ secrets.REGISTRY_SERVER }}
+          DEPLOY_VERSION: ${{ needs.build_image.outputs.image_tag }}
+        run: |
+          bundle exec kamal deploy --destination production --version "${DEPLOY_VERSION}"
+          bundle exec kamal run app --destination production --version "${DEPLOY_VERSION}" -- bin/rails db:migrate
+
+  smoke_production:
+    name: Smoke production
+    runs-on: ubuntu-latest
+    needs: deploy_production
+    if: needs.deploy_production.result == 'success'
+    env:
+      PRODUCTION_BASE_URL: ${{ secrets.PRODUCTION_BASE_URL }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Run production smoke tests
+        run: bin/ci/smoke production
+
+      - name: Rollback on failure
+        if: failure()
+        env:
+          KAMAL_REGISTRY_USERNAME: ${{ secrets.REGISTRY_USERNAME }}
+          KAMAL_REGISTRY_PASSWORD: ${{ secrets.REGISTRY_PASSWORD }}
+          KAMAL_REGISTRY_SERVER: ${{ secrets.REGISTRY_SERVER }}
+        run: bundle exec kamal rollback --destination production
+
+  post_deploy_monitoring:
+    name: Post-deploy monitoring
+    runs-on: ubuntu-latest
+    needs:
+      - smoke_staging
+      - smoke_production
+    if: always() && github.event_name != 'pull_request'
+    env:
+      MONITORING_URL: ${{ secrets.MONITORING_URL }}
+    steps:
+      - name: Check deployment signals
+        if: env.MONITORING_URL != ''
+        run: curl -fsSL "${MONITORING_URL}"
+
+      - name: Skip monitoring (no endpoint configured)
+        if: env.MONITORING_URL == ''
+        run: echo "MONITORING_URL not configured; skipping monitoring checks."
 

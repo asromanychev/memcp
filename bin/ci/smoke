@@ -1,0 +1,56 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+usage() {
+  cat <<'USAGE' >&2
+Usage: bin/ci/smoke <environment>
+
+Supported environments:
+  staging     Require STAGING_BASE_URL
+  production  Require PRODUCTION_BASE_URL
+  local       Optional LOCAL_BASE_URL (default: http://127.0.0.1:3000)
+USAGE
+  exit 1
+}
+
+environment="${1:-${KAMAL_DESTINATION:-${KAMAL_ENVIRONMENT:-}}}"
+
+if [ -z "${environment}" ]; then
+  usage
+fi
+
+case "${environment}" in
+  staging)
+    base_url="${STAGING_BASE_URL:-}"
+    ;;
+  production)
+    base_url="${PRODUCTION_BASE_URL:-}"
+    ;;
+  local)
+    base_url="${LOCAL_BASE_URL:-http://127.0.0.1:3000}"
+    ;;
+  *)
+    usage
+    ;;
+esac
+
+if [ -z "${base_url}" ]; then
+  echo "Base URL for ${environment} environment is not configured." >&2
+  exit 1
+fi
+
+curl_opts=(--fail --silent --show-error --max-time 10 --retry 2 --retry-delay 2)
+
+echo "Smoke: healthcheck ${base_url}/up"
+curl "${curl_opts[@]}" "${base_url}/up" >/dev/null
+
+payload='{"memory":{"project_key":"smoke","query":"ping","limit":1,"symbols":[],"signals":[]}}'
+
+echo "Smoke: recall ${base_url}/recall"
+curl "${curl_opts[@]}" \
+  --header "Content-Type: application/json" \
+  --data "${payload}" \
+  "${base_url}/recall" >/dev/null
+
+echo "Smoke tests for ${environment} completed."
+

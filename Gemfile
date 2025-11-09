@@ -45,4 +45,5 @@ group :development, :test do
   gem "rubocop-rails-omakase", require: false
 
   gem "rspec-rails", "~> 6.0.0"
+  gem "bundler-audit", require: false
 end
