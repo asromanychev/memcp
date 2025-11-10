@@ -58,6 +58,8 @@ rails db:create
 rails db:migrate
 rails db:create:queue
 rails db:schema:load:queue
+# Заполнить embeddings для существующих записей (опционально)
+rails memories:generate_embeddings
 
 # Запуск Rails API
 rails server
@@ -89,6 +91,8 @@ bin/setup          # устанавливает зависимости, мигр
 bin/setup_embeddings        # скачивает веса
 MEMORY_EMBEDDING_PORT=8081 bin/embedding_server
 bin/rails server
+# Solid Queue: запуск воркера в отдельном терминале
+# bundle exec rails solid_queue:start
 ```
 
 Проверка сервиса embeddings:
