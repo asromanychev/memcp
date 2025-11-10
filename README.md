@@ -93,6 +93,17 @@ MEMORY_EMBEDDING_PORT=8081 bin/embedding_server
 bin/rails server
 # Solid Queue: запуск воркера в отдельном терминале
 # bundle exec rails solid_queue:start
+
+### Atlas Adapter (зеркалирование insales_atlas)
+
+- Сервис `Atlas::SyncService` копирует документы из `insales_atlas/` в `storage/atlas/`, вычисляет SHA256 и избавляется от дубликатов (один blob на несколько источников).
+- Для запуска синхронизации:  
+  ```bash
+  bundle exec rails atlas:sync
+  ```
+- Метаданные доступны в `storage/atlas/index.json`, контент — в `storage/atlas/blobs/`.
+- Повторный запуск обновляет индекс и копирует только новые/изменённые файлы (по SHA).
+- Каталог `storage/` не версионируется: каждый разработчик наполняет его локально (см. `storage/README.md`). При очистке окружения содержимое можно удалять.
 ```
 
 Проверка сервиса embeddings:
