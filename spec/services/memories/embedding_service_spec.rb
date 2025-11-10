@@ -28,7 +28,7 @@ RSpec.describe Memories::EmbeddingService do
       service = described_class.call(params: { content: "  " })
 
       expect(service).not_to be_success
-      expect(service.errors).to include("content is required")
+      expect(service.errors.full_messages).to include("content is required")
     end
 
     it "handles non-success HTTP responses" do
@@ -37,7 +37,7 @@ RSpec.describe Memories::EmbeddingService do
       service = described_class.call(params: { content: "embedding smoke test" })
 
       expect(service).not_to be_success
-      expect(service.errors).to include("embedding provider responded with status 500")
+      expect(service.errors.full_messages).to include("embedding provider responded with status 500")
     end
 
     it "handles invalid payloads" do
@@ -46,7 +46,7 @@ RSpec.describe Memories::EmbeddingService do
       service = described_class.call(params: { content: "embedding smoke test" })
 
       expect(service).not_to be_success
-      expect(service.errors).to include("embedding provider returned invalid payload")
+      expect(service.errors.full_messages).to include("embedding provider returned invalid payload")
     end
   end
 end

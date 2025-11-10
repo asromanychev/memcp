@@ -5,7 +5,7 @@ class MemoryController < ApplicationController
     if service.success?
       render json: service.result, status: :ok
     else
-      render json: { errors: service.errors }, status: :unprocessable_entity
+      render json: { errors: service.errors.full_messages }, status: :unprocessable_entity
     end
   end
 
@@ -15,7 +15,7 @@ class MemoryController < ApplicationController
     if service.success?
       render json: service.result, status: :created
     else
-      render json: { errors: service.errors }, status: :unprocessable_entity
+      render json: { errors: service.errors.full_messages }, status: :unprocessable_entity
     end
   end
 

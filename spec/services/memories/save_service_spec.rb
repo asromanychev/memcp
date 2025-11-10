@@ -44,14 +44,14 @@ RSpec.describe Memories::SaveService do
       service = call_service(project_key: nil, content: nil)
 
       expect(service).not_to be_success
-      expect(service.errors).to include("project_key is required", "content is required")
+      expect(service.errors.full_messages).to include("project_key is required", "content is required")
     end
 
     it "validates kind against whitelist" do
       service = call_service(kind: "unknown")
 
       expect(service).not_to be_success
-      expect(service.errors).to include("kind must be one of: #{MemoryRecord::KINDS.join(', ')}")
+      expect(service.errors.full_messages).to include("kind must be one of: #{MemoryRecord::KINDS.join(', ')}")
     end
   end
 end

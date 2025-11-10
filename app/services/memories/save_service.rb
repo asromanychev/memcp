@@ -1,48 +1,40 @@
 module Memories
   class SaveService
-    def self.call(params:)
-      new(params).call
-    end
+    include ActiveModelService
 
-    attr_reader :errors, :result
-
-    def initialize(params)
+    def initialize(params:)
+      super()
       @params = params || {}
-      @errors = []
       @result = {}
-    end
-
-    def call
       extract_attributes
-      validate!
-      return self if errors.any?
-
-      record = nil
-      ActiveRecord::Base.transaction do
-        project = upsert_project
-        record = create_record(project)
-        @result = serialize_record(record)
-      end
-
-      Memories::GenerateEmbeddingJob.perform_later(memory_record_id: record.id) if record.present?
-
-      self
-    rescue ActiveRecord::RecordInvalid => e
-      errors.concat(e.record.errors.full_messages)
-      self
-    rescue StandardError => e
-      errors << e.message
-      self
-    end
-
-    def success?
-      errors.empty?
     end
 
     private
 
     attr_reader :params, :project_key, :task_external_id, :kind, :content,
                 :scope, :tags, :owner, :ttl, :quality, :meta
+
+    def validate_call
+      errors.add(:base, "project_key is required") if project_key.blank?
+      errors.add(:base, "kind is required") if kind.blank?
+      errors.add(:base, "content is required") if content.blank?
+      if kind.present? && !MemoryRecord::KINDS.include?(kind)
+        errors.add(:base, "kind must be one of: #{MemoryRecord::KINDS.join(', ')}")
+      end
+    end
+
+    def perform
+      ActiveRecord::Base.transaction do
+        project = upsert_project
+        record = create_record(project)
+        @result = serialize_record(record)
+        enqueue_embedding(record)
+      end
+    rescue ActiveRecord::RecordInvalid => e
+      errors.merge!(e.record.errors)
+    rescue StandardError => e
+      errors.add(:base, e.message)
+    end
 
     def extract_attributes
       @project_key = fetch_param(:project_key).presence
@@ -55,15 +47,6 @@ module Memories
       @ttl = fetch_param(:ttl)
       @quality = fetch_param(:quality).presence || {}
       @meta = fetch_param(:meta).presence || {}
-    end
-
-    def validate!
-      errors << "project_key is required" if project_key.blank?
-      errors << "kind is required" if kind.blank?
-      errors << "content is required" if content.blank?
-      if kind.present? && !MemoryRecord::KINDS.include?(kind)
-        errors << "kind must be one of: #{MemoryRecord::KINDS.join(', ')}"
-      end
     end
 
     def upsert_project
@@ -104,6 +87,10 @@ module Memories
         quality: record.quality,
         meta: record.meta
       }
+    end
+
+    def enqueue_embedding(record)
+      Memories::GenerateEmbeddingJob.perform_later(memory_record_id: record.id)
     end
 
     def fetch_param(key)

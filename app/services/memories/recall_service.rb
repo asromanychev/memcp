@@ -1,43 +1,35 @@
+require "set"
+
 module Memories
   class RecallService
-    def self.call(params:)
-      new(params).call
-    end
+    include ActiveModelService
 
-    attr_reader :errors, :result
-
-    def initialize(params)
+    def initialize(params:)
+      super()
       @params = params || {}
-      @errors = []
       @result = default_result
-    end
-
-    def call
       extract_attributes
-      validate!
-      return self if errors.any?
-
-      project = find_project
-
-      if project.nil?
-        @result = default_result
-        return self
-      end
-
-      records = fetch_records(project)
-      @result = build_result(records)
-
-      self
-    end
-
-    def success?
-      errors.empty?
     end
 
     private
 
     attr_reader :params, :project_key, :task_external_id, :repo_path,
                 :query, :symbols, :signals, :limit_tokens
+
+    def validate_call
+      errors.add(:base, "project_key is required") if project_key.blank?
+    end
+
+    def perform
+      project = find_project
+      if project.nil?
+        @result = default_result
+        return
+      end
+
+      records = fetch_records(project)
+      @result = build_result(records)
+    end
 
     def extract_attributes
       @project_key = fetch_param(:project_key).presence
@@ -50,16 +42,12 @@ module Memories
       @limit_tokens = 2000 if @limit_tokens <= 0
     end
 
-    def validate!
-      errors << "project_key is required" if project_key.blank?
-    end
-
     def find_project
       Project.find_by(key: project_key)
     end
 
     def fetch_records(project)
-      MemoryRecord.search(
+      text_records = MemoryRecord.search(
         query: query,
         project: project,
         task_external_id: task_external_id,
@@ -67,7 +55,15 @@ module Memories
         symbols: symbols,
         signals: signals,
         limit: 50
-      )
+      ).to_a
+
+      return text_records if query.blank?
+
+      query_embedding = generate_query_embedding
+      return text_records if query_embedding.blank?
+
+      vector_records = fetch_vector_records(project, query_embedding)
+      merge_records(vector_records, text_records)
     end
 
     def build_result(records)
@@ -140,6 +136,49 @@ module Memories
 
     def fetch_param(key)
       params[key] || params[key.to_s]
+    end
+
+    def generate_query_embedding
+      service = Memories::EmbeddingService.call(params: { content: query })
+      return service.result if service.success?
+
+      Rails.logger.warn(
+        "[Memories::RecallService] embedding generation failed: #{service.errors.full_messages.join(', ')}"
+      )
+      nil
+    end
+
+    def fetch_vector_records(project, query_embedding)
+      MemoryRecord
+        .active
+        .for_project(project.id)
+        .where.not(embedding_1024: nil)
+        .nearest_neighbors(:embedding_1024, query_embedding)
+        .limit(30)
+    rescue StandardError => e
+      Rails.logger.warn("[Memories::RecallService] vector search failed: #{e.message}")
+      []
+    end
+
+    def merge_records(vector_records, text_records)
+      merged = []
+      seen_ids = Set.new
+
+      vector_records.each do |record|
+        next if seen_ids.include?(record.id)
+
+        merged << record
+        seen_ids << record.id
+      end
+
+      text_records.each do |record|
+        next if seen_ids.include?(record.id)
+
+        merged << record
+        seen_ids << record.id
+      end
+
+      merged
     end
 
     def default_result

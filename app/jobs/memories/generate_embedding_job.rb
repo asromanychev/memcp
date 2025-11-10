@@ -12,7 +12,7 @@ module Memories
       service = Memories::EmbeddingService.call(params: { content: record.content })
       unless service.success?
         Rails.logger.warn(
-          "[Memories::GenerateEmbeddingJob] failed for MemoryRecord##{record.id}: #{service.errors.join(', ')}"
+          "[Memories::GenerateEmbeddingJob] failed for MemoryRecord##{record.id}: #{service.errors.full_messages.join(', ')}"
         )
         raise StandardError, "embedding generation failed"
       end
