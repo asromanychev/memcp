@@ -22,8 +22,8 @@ default: &default
 
 development:
   primary: &primary_development
-    <<: *default
-    database: memcp_development
+  <<: *default
+  database: memcp_development
   queue:
     <<: *primary_development
     database: memcp_development_queue
@@ -61,8 +61,8 @@ development:
 # Do not set this db to the same as development or production.
 test:
   primary: &primary_test
-    <<: *default
-    database: memcp_test
+  <<: *default
+  database: memcp_test
   queue:
     <<: *primary_test
     database: memcp_test_queue

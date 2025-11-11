@@ -141,6 +141,32 @@ bin/rails server
   ```
 - Ошибки навыков возвращаются в `result.result[:errors]`.
 
+### Observability Hub (reasoning-логи)
+
+- `Observability::HubService` пишет события планировщика и навыков в `storage/logs/observability/current.jsonl`. Формат записи: JSONL со стандартными полями (`trace_id`, `event_id`, `operation`, `status`, `duration_ms`, `payload`, `extra`, `error`).
+- Встроенная ротация: при достижении 10 МБ файл переименовывается в `current.jsonl.<timestamp>.jsonl.gz`, новый файл создаётся автоматически.
+- Smoke-сценарий:
+  ```bash
+  # 1. Подготовить временный источник Atlas
+  mkdir -p tmp/atlas_demo/guides
+  cat <<'EOF' > tmp/atlas_demo/guides/intro.md
+  # Demo Guide
+  Demo document for observability smoke.
+  EOF
+
+  bundle exec rails runner 'Atlas::SyncService.call(params: { source_root: Rails.root.join("tmp/atlas_demo") })'
+
+  # 2. Вызвать планировщик с явным навыком
+  bundle exec rails runner 'Planner::SimplePlanner.call(params: { query: "", skill_id: :atlas_search, skill_params: { query: "demo" } })'
+
+  # 3. Проверить свежие события
+  tail -n 5 storage/logs/observability/current.jsonl
+
+  # 4. Очистить временные артефакты (опционально)
+  rm -rf tmp/atlas_demo
+  ```
+- При ошибках навыков `status` сменится на `error`, дополнительный контекст попадёт в `error` и `extra`. Если запись лога не удалась, бизнес-логика продолжит выполнение (исключения подавляются).
+
 Проверка сервиса embeddings:
 
 ```bash

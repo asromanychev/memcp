@@ -24,7 +24,7 @@ module Memories
     def validate_call
       errors.add(:base, "content is required") if content.blank?
       errors.add(:base, "Unknown embedding provider: #{provider_key}") if provider_config.blank?
-    end
+      end
 
     def perform
       case provider_key
