@@ -106,6 +106,41 @@ bin/rails server
 - Каталог `storage/` не версионируется: каждый разработчик наполняет его локально (см. `storage/README.md`). При очистке окружения содержимое можно удалять.
 ```
 
+### File Sync Adapter (локальные документы)
+
+- `FileSync::WatcherService` синхронизирует `documents/` в `storage/documents/`, вычисляет SHA и обновляет индекс.
+- Поддерживаются текстовые расширения `.md`, `.mdc`, `.txt`, `.rb`, `.js`, `.sql`, `.json`, `.yml`, `.yaml`.
+- Запуск initial sync + watcher:
+  ```bash
+  bundle exec rails runner 'FileSync::WatcherService.call(params: { source_root: Rails.root.join("documents"), target_root: Rails.root.join("storage/documents") })'
+  ```
+  (держи процесс в отдельном терминале — `listen` следит за изменениями).
+- Метаданные лежат в `storage/documents/index.json`; удаление исходного файла удаляет копию и запись в индексе.
+- Краткий smoke:
+  ```bash
+  echo "# notes" > documents/sample.md
+  bundle exec rails runner 'service = FileSync::WatcherService.call(params: { source_root: Rails.root.join("documents"), target_root: Rails.root.join("storage/documents") }); sleep 1'
+  cat storage/documents/sample.md
+  cat storage/documents/index.json | jq .
+  ```
+  После проверки останови watcher комбинацией `Ctrl+C`.
+
+### Skills & Planner (MVP)
+
+- Навыки регистрируются через `Skills::Registry`; сейчас доступны:
+  - `atlas_search(query:, limit: 10)` — поиск в зеркале `storage/atlas/index.json`.
+  - `documents_grep(pattern:, limit: 10)` — текстовый поиск в `storage/documents/`.
+- Планировщик `Planner::SimplePlanner` подбирает навык по запросу или принимает `skill_id` явно.
+- Примеры:
+  ```ruby
+  result = Planner::SimplePlanner.call(params: { query: "atlas adr short link" })
+  puts result.result[:result][:matches]
+
+  result = Planner::SimplePlanner.call(params: { skill_id: :documents_grep, skill_params: { pattern: "CartSessions" } })
+  puts result.result[:result][:matches]
+  ```
+- Ошибки навыков возвращаются в `result.result[:errors]`.
+
 Проверка сервиса embeddings:
 
 ```bash
