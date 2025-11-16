@@ -26,7 +26,27 @@ module Memories
     def perform
       ActiveRecord::Base.transaction do
         project = upsert_project
-        record = create_record(project)
+
+        # Генерация хешей для дедупликации
+        dedup_result = Memories::DeduplicationService.call(params: { content: content })
+        unless dedup_result.success?
+          errors.add(:base, "Failed to generate deduplication hashes: #{dedup_result.errors.full_messages.join(', ')}")
+          return
+        end
+
+        # Поиск похожих записей
+        similar = MemoryRecord.find_similar(
+          content: content,
+          project_id: project.id,
+          threshold: 0.85
+        ).first
+
+        record = if similar
+                   update_existing_record(similar, dedup_result.result)
+                 else
+                   create_new_record(project, dedup_result.result)
+                 end
+
         @result = serialize_record(record)
         enqueue_embedding(record)
       end
@@ -59,7 +79,7 @@ module Memories
       project
     end
 
-    def create_record(project)
+    def create_new_record(project, dedup_hashes)
       MemoryRecord.create!(
         project_id: project.id,
         task_external_id: task_external_id,
@@ -70,8 +90,55 @@ module Memories
         owner: owner,
         ttl: ttl,
         quality: quality,
-        meta: meta
+        meta: meta,
+        simhash: dedup_hashes[:simhash],
+        minhash: dedup_hashes[:minhash]
       )
+    end
+
+    def update_existing_record(record, dedup_hashes)
+      # Объединяем теги
+      merged_tags = ((record.tags || []) + tags).uniq.compact_blank
+
+      # Объединяем quality (берем лучшее значение)
+      merged_quality = merge_quality(record.quality || {}, quality)
+
+      # Обновляем контент если новый длиннее или если это явное обновление
+      new_content = if content.length > record.content.length
+                      content
+                    else
+                      record.content
+                    end
+
+      record.update!(
+        content: new_content,
+        tags: merged_tags,
+        quality: merged_quality,
+        simhash: dedup_hashes[:simhash],
+        minhash: dedup_hashes[:minhash],
+        updated_at: Time.current
+      )
+
+      record
+    end
+
+    def merge_quality(old_quality, new_quality)
+      merged = (old_quality || {}).dup
+
+      # Для числовых метрик берем максимум
+      %w[novelty usefulness].each do |key|
+        old_val = old_quality&.dig(key).to_f
+        new_val = new_quality&.dig(key).to_f
+        merged[key] = [old_val, new_val].max if old_val > 0 || new_val > 0
+      end
+
+      # Для risk берем максимум (больше риск = хуже)
+      old_risk = old_quality&.dig("risk").to_f
+      new_risk = new_quality&.dig("risk").to_f
+      merged["risk"] = [old_risk, new_risk].max if old_risk > 0 || new_risk > 0
+
+      # Объединяем остальные поля
+      merged.merge(new_quality || {})
     end
 
     def serialize_record(record)

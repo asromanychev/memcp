@@ -269,13 +269,25 @@ kill %1   # остановить сервер
 
 ## Статус
 
-**MVP Итерация 1** - Заглушки для API и базовый MCP-сервер.
+**Текущее состояние (2025-11-11):**
 
-Следующие шаги:
-- [ ] Реализация генерации embeddings
-- [ ] Реализация векторного поиска
-- [ ] Аутентификация и авторизация
-- [ ] Тестирование
+✅ **Завершено:**
+- MVP-01: Core API Service Objects (`Memories::RecallService`, `Memories::SaveService`)
+- MVP-02: Векторный поиск (`Memories::EmbeddingService`, гибридный поиск в `RecallService`, `GenerateEmbeddingJob`)
+- Atlas Adapter (`Atlas::SyncService`) — зеркалирование insales_atlas
+- File Sync Adapter (`FileSync::WatcherService`) — синхронизация локальных документов
+- Skills & Planner MVP (`Skills::Registry`, `Planner::SimplePlanner`, навыки `atlas_search` и `documents_grep`)
+- Observability Hub (базовая реализация: `Observability::HubService`, JSONL-логи с ротацией, интеграция в планировщик)
+
+**Следующие шаги:**
+
+**Этап 2 (текущий):**
+- MVP-03: Дедупликация (SimHash/MinHash для обнаружения похожих записей и upsert логика)
+
+**Этап 3 (отложено):**
+- Расширить Observability Hub: агрегаты по навыкам, экспорт в Prometheus/ClickHouse, алерты
+  - **Когда необходимо:** при реальной нагрузке (десятки запросов/мин), необходимости мониторинга в production, росте команды (нужны дашборды), автоматической диагностике проблем
+- Demo Playbooks (resettable сценарии для dev-практик)
 
 ## Лицензия
 
