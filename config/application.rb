@@ -18,6 +18,19 @@ require "action_cable/engine"
 # you've limited to :test, :development, or :production.
 Bundler.require(*Rails.groups)
 
+# REDIS_CONFIG - централизованный доступ к конфигурации Redis через database.yml
+# По аналогии с Insales
+REDIS_CONFIG = Hash.new do |_hash, key|
+  # по мотивам Rails.application.config_for(:redis)[:foo]
+  Rails.configuration.database_configuration['redis'].then do |all_configs|
+    (
+      all_configs.dig(Rails.env, key.to_s) || 
+      all_configs.dig(Rails.env, 'default') || 
+      all_configs['shared']
+    ).deep_symbolize_keys
+  end
+end.freeze
+
 module Memcp
   class Application < Rails::Application
     # Initialize configuration defaults for originally generated Rails version.

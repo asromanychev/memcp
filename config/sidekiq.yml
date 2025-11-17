@@ -1,0 +1,11 @@
+---
+:concurrency: 2
+:queues:
+  - default
+  - embeddings
+
+:schedule:
+  # Example recurring job - you can add more here
+  # cleanup_old_embeddings:
+  #   cron: '0 2 * * *' # Daily at 2 AM
+  #   class: 'CleanupEmbeddingsJob'

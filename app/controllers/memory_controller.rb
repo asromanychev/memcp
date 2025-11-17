@@ -22,7 +22,10 @@ class MemoryController < ApplicationController
   private
 
   def recall_params
-    payload = params.require(:memory).permit(
+    # Поддержка как прямых параметров (от MCP), так и обернутых в :memory
+    source_params = params[:memory] || params
+    
+    payload = source_params.permit(
       :project_key,
       :task_external_id,
       :repo_path,
@@ -36,7 +39,10 @@ class MemoryController < ApplicationController
   end
 
   def save_params
-    payload = params.require(:memory).permit(
+    # Поддержка как прямых параметров (от MCP), так и обернутых в :memory
+    source_params = params[:memory] || params
+    
+    payload = source_params.permit(
       :project_key,
       :task_external_id,
       :kind,

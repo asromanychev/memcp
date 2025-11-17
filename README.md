@@ -7,21 +7,24 @@ MVP Итерация 1: Минимально жизнеспособная вер
 Проект предоставляет архитектуру долгосрочной памяти для AI-ассистентов в IDE (например, Cursor IDE) через MCP (Model Context Protocol). Состоит из:
 
 - **Rails Core API**: API-only приложение для управления памятью (PostgreSQL + pgvector)
+- **Sidekiq + Redis**: Асинхронная обработка задач через Sidekiq с использованием Redis
 - **Ruby MCP-сервер**: STDIO сервер для интеграции с IDE через MCP протокол
 
 ## Быстрый старт
+
+> 📘 **Для проекта Insales:** См. подробную инструкцию [INSTALLATION_INSALES.md](INSTALLATION_INSALES.md) с пошаговыми инструкциями по установке и подключению MCP сервера в Cursor IDE.
 
 ### Вариант A: Docker (рекомендуется)
 
 Требуется установленный Docker и Docker Compose (плагин `docker compose`).  
 Compose-файл использует `dev`-слой Dockerfile, в котором собраны **все** зависимости (включая `development`/`test`).
 
-1. Собрать и запустить все сервисы (Rails API, Solid Queue worker, PostgreSQL + pgvector):
+1. Собрать и запустить все сервисы (Rails API, PostgreSQL + pgvector, Redis):
    ```bash
    docker compose up --build
    ```
-2. После первого запуска дополнительно ничего делать не нужно — контейнеры выполнят `bundle install`, `rails db:prepare` и подготовку очереди (`db:create:queue`, `db:schema:load:queue`) автоматически.
-3. API будет доступен на `http://localhost:3001`, база данных — на `localhost:5432`.
+2. После первого запуска дополнительно ничего делать не нужно — контейнеры выполнят `bundle install` и `rails db:prepare` автоматически.
+3. API будет доступен на `http://localhost:3101`, база данных — на `localhost:15433`, Redis — на `localhost:16380`.
 
 Полезные команды:
 
@@ -30,19 +33,39 @@ Compose-файл использует `dev`-слой Dockerfile, в которо
 - Запуск тестов: `docker compose run --rm web bundle exec rspec`
 - Выполнение разовой команды Rails: `docker compose run --rm web ./bin/rails <command>`
 - Подключиться к базе: `docker compose exec db psql -U postgres memcp_development`
+- Подключиться к Redis: `docker compose exec redis redis-cli`
+- Просмотр логов Sidekiq: `docker compose logs worker -f`
 
 > Порты сервисов заданы через ENV и по умолчанию не пересекаются со стандартными значениями:  
 > • API: `3101` (`MEMCP_WEB_PORT`)  
-> • PostgreSQL: `15432` (`MEMCP_DB_PORT`)  
-> При необходимости переопределите их при запуске, например `MEMCP_WEB_PORT=3200 MEMCP_DB_PORT=25432 docker compose up`.
+> • PostgreSQL: `15433` (`MEMCP_DB_PORT`)  
+> • Redis: `16380` (`MEMCP_REDIS_PORT`)  
+> При необходимости переопределите их при запуске, например `MEMCP_WEB_PORT=3200 MEMCP_DB_PORT=25433 MEMCP_REDIS_PORT=26380 docker compose up`.
 
-Solid Queue worker по умолчанию не стартует. Запустить его можно так:
+### Sidekiq Worker (очереди задач)
+
+Sidekiq worker по умолчанию не стартует. Запустить его можно так:
 
 ```bash
 docker compose --profile queue up
 ```
 
-Перед этим убедитесь, что применены миграции Solid Queue (`rails solid_queue:install && rails db:migrate`).
+Worker использует Redis для хранения очередей задач. Конфигурация Redis находится в `config/database.yml` (секция `redis:`), отдельные базы данных используются для:
+- `default` (db: 0) — общее использование Redis
+- `sidekiq` (db: 1) — очереди Sidekiq
+
+Проверка работы Redis и Sidekiq:
+
+```bash
+# Проверка Redis
+docker compose exec redis redis-cli ping
+
+# Проверка через Rails console
+docker compose run --rm web bundle exec rails runner 'puts $redis.ping; puts Sidekiq.redis { |c| c.ping }'
+
+# Постановка тестовой джобы в очередь
+docker compose run --rm web bundle exec rails runner 'TestJob.perform_async("test")'
+```
 
 ### Вариант B: Локальная установка
 
@@ -56,8 +79,11 @@ sudo -u postgres psql -d memcp_development -c "CREATE EXTENSION IF NOT EXISTS ve
 # Запустите миграции
 rails db:create
 rails db:migrate
-rails db:create:queue
-rails db:schema:load:queue
+
+# Убедитесь, что Redis запущен локально или через Docker
+# Запустите Sidekiq worker (в отдельном терминале)
+bundle exec sidekiq -C config/sidekiq.yml
+
 # Заполнить embeddings для существующих записей (опционально)
 rails memories:generate_embeddings
 
@@ -91,8 +117,8 @@ bin/setup          # устанавливает зависимости, мигр
 bin/setup_embeddings        # скачивает веса
 MEMORY_EMBEDDING_PORT=8081 bin/embedding_server
 bin/rails server
-# Solid Queue: запуск воркера в отдельном терминале
-# bundle exec rails solid_queue:start
+# Sidekiq: запуск воркера в отдельном терминале
+# bundle exec sidekiq -C config/sidekiq.yml
 
 ### Atlas Adapter (зеркалирование insales_atlas)
 
@@ -235,22 +261,32 @@ kill %1   # остановить сервер
   "mcpServers": {
     "memcp": {
       "command": "ruby",
-      "args": ["/home/aromanychev/dev/mcp/memcp/mcp_server.rb"],
+      "args": ["/Users/asromanychev/dev/memcp/mcp_server.rb"],
       "env": {
-        "MEMCP_API_URL": "http://localhost:3001"
+        "MEMCP_API_URL": "http://localhost:3101"
       }
     }
   }
 }
 ```
 
-Перезапустите Cursor IDE.
+**Важно:**
+- Замените путь `/Users/asromanychev/dev/memcp/mcp_server.rb` на ваш реальный путь к файлу
+- Убедитесь, что сервер запущен: `docker compose --profile queue up`
+- API доступен на `http://localhost:3101` (порт можно изменить через `MEMCP_WEB_PORT`)
+
+Перезапустите Cursor IDE после настройки.
 
 ## Структура проекта
 
 - `app/controllers/memory_controller.rb` - API контроллер с заглушками `recall` и `save`
 - `app/models/` - Модели `Project` и `MemoryRecord`
+- `app/jobs/` - Sidekiq джобы (базовый класс `BaseSidekiqJob`, `GenerateEmbeddingJob`, `TestJob`)
 - `db/migrate/` - Миграции для таблиц `projects` и `memory_records`
+- `config/database.yml` - Конфигурация PostgreSQL и Redis (секция `redis:`)
+- `config/initializers/01_redis.rb` - Инициализация подключения к Redis (`$redis`)
+- `config/initializers/sidekiq.rb` - Конфигурация Sidekiq (сервер и клиент)
+- `config/sidekiq.yml` - Конфигурация очередей Sidekiq
 - `mcp_server.rb` - Ruby MCP STDIO сервер с инструментами `recall` и `save`
 
 ## API Endpoints
@@ -274,6 +310,11 @@ kill %1   # остановить сервер
 ✅ **Завершено:**
 - MVP-01: Core API Service Objects (`Memories::RecallService`, `Memories::SaveService`)
 - MVP-02: Векторный поиск (`Memories::EmbeddingService`, гибридный поиск в `RecallService`, `GenerateEmbeddingJob`)
+- **Sidekiq + Redis**: Настройка очередей задач через Sidekiq с использованием Redis (конфигурация по аналогии с Insales, упрощенная версия)
+  - Конфигурация Redis в `config/database.yml` с отдельными базами для default (db: 0) и sidekiq (db: 1)
+  - Инициализация `$redis` в `config/initializers/01_redis.rb`
+  - Конфигурация Sidekiq в `config/initializers/sidekiq.rb`
+  - Базовый класс `BaseSidekiqJob` для джоб
 - Atlas Adapter (`Atlas::SyncService`) — зеркалирование insales_atlas
 - File Sync Adapter (`FileSync::WatcherService`) — синхронизация локальных документов
 - Skills & Planner MVP (`Skills::Registry`, `Planner::SimplePlanner`, навыки `atlas_search` и `documents_grep`)

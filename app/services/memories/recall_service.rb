@@ -80,6 +80,9 @@ module Memories
           total_tokens, facts = append_fact(record, total_tokens, facts)
         when "fewshot"
           total_tokens, few_shots = append_few_shot(record, total_tokens, few_shots)
+        when "pattern", "gotcha", "rule"
+          # Pattern, gotcha, rule обрабатываются как facts
+          total_tokens, facts = append_fact(record, total_tokens, facts)
         when "adr_link", "link"
           links << {
             title: record.meta&.dig("title") || record.content[0..100],

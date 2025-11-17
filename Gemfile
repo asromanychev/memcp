@@ -19,7 +19,9 @@ gem "tzinfo-data", platforms: %i[ windows jruby ]
 
 # Use the database-backed adapters for Rails.cache, Active Job, and Action Cable
 gem "solid_cache"
-gem "solid_queue"
+# gem "solid_queue" - replaced with Sidekiq
+gem "sidekiq", "~> 7.0"
+gem "redis", "~> 5.0"
 gem "solid_cable"
 
 # Deploy this application anywhere as a Docker container [https://kamal-deploy.org]

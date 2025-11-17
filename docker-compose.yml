@@ -6,8 +6,11 @@ services:
     command: ./bin/rails server -b 0.0.0.0 -p 3101
     environment:
       RAILS_ENV: development
+      # БД конфигурация через DATABASE_URL (Rails лучше понимает это)
       DATABASE_URL: postgres://postgres:postgres@db:5432/memcp_development
-      SOLID_QUEUE_DATABASE_URL: postgres://postgres:postgres@db:5432/memcp_development
+      # Redis конфигурация
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
       RAILS_LOG_TO_STDOUT: "true"
       RAILS_MAX_THREADS: 3
     volumes:
@@ -19,16 +22,21 @@ services:
     depends_on:
       db:
         condition: service_healthy
+      redis:
+        condition: service_healthy
 
   worker:
     build:
       context: .
       target: dev
-    command: bundle exec ruby ./bin/jobs start
+    command: bundle exec sidekiq -C config/sidekiq.yml
     environment:
       RAILS_ENV: development
+      # БД конфигурация через DATABASE_URL
       DATABASE_URL: postgres://postgres:postgres@db:5432/memcp_development
-      SOLID_QUEUE_DATABASE_URL: postgres://postgres:postgres@db:5432/memcp_development
+      # Redis конфигурация
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
       JOB_CONCURRENCY: 1
     volumes:
       - .:/app
@@ -37,10 +45,25 @@ services:
     depends_on:
       db:
         condition: service_healthy
+      redis:
+        condition: service_healthy
       web:
         condition: service_started
     profiles:
       - queue
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "${MEMCP_REDIS_PORT:-16380}:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 5s
 
   db:
     image: ankane/pgvector:latest
@@ -49,7 +72,7 @@ services:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
     ports:
-      - "${MEMCP_DB_PORT:-15432}:5432"
+      - "${MEMCP_DB_PORT:-15433}:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
@@ -62,5 +85,6 @@ services:
 volumes:
   bundle:
   postgres_data:
+  redis_data:
   rails_tmp:
 

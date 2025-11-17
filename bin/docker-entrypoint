@@ -18,23 +18,52 @@ if [ -f "Gemfile" ]; then
   bundle check || bundle install
 fi
 
-# Wait for the database to be ready when DATABASE_URL is provided
+# Wait for the database to be ready
+# Support both DATABASE_URL and DB_HOST/DB_PORT/DB_USER
 if [ -n "${DATABASE_URL:-}" ]; then
   db_host=$(ruby -e 'require "uri"; uri = URI(ENV["DATABASE_URL"]); puts(uri.host || "localhost")')
   db_port=$(ruby -e 'require "uri"; uri = URI(ENV["DATABASE_URL"]); puts(uri.port || 5432)')
   db_user=$(ruby -e 'require "uri"; uri = URI(ENV["DATABASE_URL"]); puts(uri.user || "postgres")')
+elif [ -n "${DB_HOST:-}" ]; then
+  db_host="${DB_HOST}"
+  db_port="${DB_PORT:-5432}"
+  db_user="${DB_USER:-postgres}"
+else
+  db_host="localhost"
+  db_port="5432"
+  db_user="postgres"
+fi
 
+if [ -n "${db_host:-}" ]; then
   until pg_isready -q -h "$db_host" -p "$db_port" -U "$db_user"; do
     echo "Waiting for database at ${db_host}:${db_port}..."
     sleep 1
   done
+  echo "Database is ready at ${db_host}:${db_port}"
 fi
 
 # If running the rails server then create or migrate existing database
 if [ "${1:-}" = "./bin/rails" ] && [ "${2:-}" = "server" ]; then
   ./bin/rails db:prepare
-  ./bin/rails db:create:queue
-  ./bin/rails db:schema:load:queue
+  
+  # Create and setup queue database
+  if [ -n "${DATABASE_URL:-}" ]; then
+    db_url=$(echo "$DATABASE_URL" | sed 's|/memcp_development|/memcp_development_queue|')
+    
+    # Create queue database if it doesn't exist
+    db_host=$(ruby -e 'require "uri"; uri = URI(ENV["DATABASE_URL"]); puts(uri.host || "localhost")')
+    db_port=$(ruby -e 'require "uri"; uri = URI(ENV["DATABASE_URL"]); puts(uri.port || 5432)')
+    db_user=$(ruby -e 'require "uri"; uri = URI(ENV["DATABASE_URL"]); puts(uri.user || "postgres")')
+    db_pass=$(ruby -e 'require "uri"; uri = URI(ENV["DATABASE_URL"]); puts(uri.password || "")')
+    
+    PGPASSWORD="${db_pass}" psql -h "$db_host" -p "$db_port" -U "$db_user" -d postgres -tc "SELECT 1 FROM pg_database WHERE datname = 'memcp_development_queue'" | grep -q 1 || \
+    PGPASSWORD="${db_pass}" psql -h "$db_host" -p "$db_port" -U "$db_user" -d postgres -c "CREATE DATABASE memcp_development_queue;"
+    
+    # Load queue schema using Rails
+    if [ -f "db/queue_schema.rb" ]; then
+      DATABASE_URL="${db_url}" ./bin/rails db:schema:load
+    fi
+  fi
 fi
 
 exec "${@}"

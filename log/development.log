@@ -490,3 +490,11 @@ Processing by MemoryController#recall as */*
 Completed 200 OK in 4ms (Views: 0.1ms | ActiveRecord: 1.0ms (3 queries, 0 cached) | GC: 0.0ms)
 
 
+  [Redis] Connecting to redis:6379
+  [Redis] ["ping"]
+  [Redis] Connecting to redis:6379
+  [Redis] ["ping"]
+  [Redis] Connecting to redis:6379
+  [Redis] ["ping"]
+  [Redis] Connecting to redis:6379
+  [Redis] ["ping"]

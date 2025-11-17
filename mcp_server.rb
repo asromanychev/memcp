@@ -7,7 +7,7 @@ require 'uri'
 
 # MCP Server для долгосрочной памяти
 class MCPServer
-  API_BASE_URL = ENV.fetch('MEMCP_API_URL', 'http://localhost:3001').freeze
+  API_BASE_URL = ENV.fetch('MEMCP_API_URL', 'http://localhost:3101').freeze
 
   def initialize
     @server_ready = false

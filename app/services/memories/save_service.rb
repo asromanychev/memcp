@@ -24,6 +24,7 @@ module Memories
     end
 
     def perform
+      saved_record = nil
       ActiveRecord::Base.transaction do
         project = upsert_project
 
@@ -41,14 +42,18 @@ module Memories
           threshold: 0.85
         ).first
 
-        record = if similar
-                   update_existing_record(similar, dedup_result.result)
-                 else
-                   create_new_record(project, dedup_result.result)
-                 end
+        saved_record = if similar
+                         update_existing_record(similar, dedup_result.result)
+                       else
+                         create_new_record(project, dedup_result.result)
+                       end
 
-        @result = serialize_record(record)
-        enqueue_embedding(record)
+        @result = serialize_record(saved_record)
+      end
+
+      # Вызываем enqueue_embedding вне транзакции, чтобы ошибка queue не откатывала сохранение
+      if saved_record
+        enqueue_embedding(saved_record)
       end
     rescue ActiveRecord::RecordInvalid => e
       errors.merge!(e.record.errors)
@@ -157,9 +162,14 @@ module Memories
     end
 
     def enqueue_embedding(record)
-      Memories::GenerateEmbeddingJob.perform_later(memory_record_id: record.id)
+      begin
+        GenerateEmbeddingJob.perform_async(record.id)
+      rescue StandardError => e
+        # Если произошла ошибка, логируем, но не падаем
+        Rails.logger.warn("Не удалось поставить задачу генерации embedding в очередь: #{e.class} - #{e.message}")
+        nil
+      end
     end
-
     def fetch_param(key)
       params[key] || params[key.to_s]
     end

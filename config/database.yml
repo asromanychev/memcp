@@ -19,15 +19,33 @@ default: &default
   # https://guides.rubyonrails.org/configuring.html#database-pooling
   pool: <%= ENV.fetch("RAILS_MAX_THREADS") { 5 } %>
 
+# Redis configuration (по аналогии с Insales)
+redis:
+  shared: &redis-shared
+    host: <%= ENV.fetch('REDIS_HOST', 'localhost') %>
+    port: <%= ENV.fetch('REDIS_PORT', 6379).to_i %>
+  development:
+    default: { <<: *redis-shared, db: 0 }
+    sidekiq: { <<: *redis-shared, db: 1 }
+  test:
+    default: { <<: *redis-shared, db: 2 }
+    sidekiq: { <<: *redis-shared, db: 3 }
+  production:
+    default: { <<: *redis-shared, db: 0 }
+    sidekiq: { <<: *redis-shared, db: 1 }
 
 development:
   primary: &primary_development
-  <<: *default
-  database: memcp_development
-  queue:
-    <<: *primary_development
-    database: memcp_development_queue
-    migrations_paths: db/queue_migrate
+    <<: *default
+    <% if ENV["DATABASE_URL"].present? %>
+    url: <%= ENV["DATABASE_URL"] %>
+    <% else %>
+    database: memcp_development
+    host: <%= ENV.fetch("DB_HOST", "db") %>
+    port: <%= ENV.fetch("DB_PORT", "5432") %>
+    username: <%= ENV.fetch("DB_USER", "postgres") %>
+    password: <%= ENV.fetch("DB_PASSWORD", "postgres") %>
+    <% end %>
 
   # The specified database role being used to connect to PostgreSQL.
   # To create additional roles in PostgreSQL see `$ createuser --help`.
@@ -61,12 +79,8 @@ development:
 # Do not set this db to the same as development or production.
 test:
   primary: &primary_test
-  <<: *default
-  database: memcp_test
-  queue:
-    <<: *primary_test
-    database: memcp_test_queue
-    migrations_paths: db/queue_migrate
+    <<: *default
+    database: memcp_test
 
 # As with config/credentials.yml, you never want to store sensitive information,
 # like your database password, in your source code. If your source code is
@@ -98,10 +112,6 @@ production:
     <<: *primary_production
     database: memcp_production_cache
     migrations_paths: db/cache_migrate
-  queue:
-    <<: *primary_production
-    database: memcp_production_queue
-    migrations_paths: db/queue_migrate
   cable:
     <<: *primary_production
     database: memcp_production_cable
