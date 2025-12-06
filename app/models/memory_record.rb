@@ -33,9 +33,10 @@ class MemoryRecord < ApplicationRecord
     end
 
     # Фильтрация по scope: repo_path и symbols
+    # Нормализуем symbols к lowercase для поиска (scope хранится в lowercase)
     scopes = []
-    scopes.concat(repo_path.split("/").reject(&:empty?)) if repo_path.present?
-    scopes.concat(Array(symbols).compact_blank) if symbols.present?
+    scopes.concat(repo_path.split("/").reject(&:empty?).map(&:downcase)) if repo_path.present?
+    scopes.concat(Array(symbols).compact_blank.map(&:downcase)) if symbols.present?
     relation = relation.with_scope(scopes) if scopes.any?
 
     # Фильтрация по signals как тегам

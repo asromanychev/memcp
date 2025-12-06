@@ -28,7 +28,9 @@ module Memories
       end
 
       records = fetch_records(project)
+      Rails.logger.debug("[RecallService] fetch_records returned #{records.count} records")
       @result = build_result(records)
+      Rails.logger.debug("[RecallService] build_result returned #{@result[:facts].count} facts, #{@result[:few_shots].count} fewshots")
     end
 
     def extract_attributes
@@ -72,23 +74,57 @@ module Memories
       links = []
       total_tokens = 0
 
-      records.each do |record|
-        next if record.ttl.present? && record.ttl < Time.current
+      Rails.logger.info("[RecallService] build_result called with #{records.count} records, limit_tokens=#{limit_tokens}")
+
+      # Сортируем записи: сначала pattern/gotcha/rule (более важные), потом fewshot, потом fact
+      sorted_records = records.sort_by do |record|
+        priority = case record.kind
+        when "pattern", "gotcha", "rule"
+          0 # Высший приоритет
+        when "fewshot"
+          1
+        when "fact"
+          2
+        else
+          Rails.logger.warn("[RecallService] Unknown kind in sort: #{record.kind.inspect} for record #{record.id}")
+          3
+        end
+        priority
+      end
+      
+      Rails.logger.info("[RecallService] Sorted #{sorted_records.count} records, first 3 kinds: #{sorted_records.first(3).map { |r| "#{r.id}(#{r.kind})" }.join(', ')}")
+      
+      sorted_records.each do |record|
+        if record.ttl.present? && record.ttl < Time.current
+          Rails.logger.debug("[RecallService] Skipping expired record #{record.id}")
+          next
+        end
+
+        Rails.logger.info("[RecallService] Processing record #{record.id}: kind=#{record.kind.inspect}")
 
         case record.kind
         when "fact"
-          total_tokens, facts = append_fact(record, total_tokens, facts)
+          result_tuple = append_fact(record, total_tokens, facts)
+          total_tokens = result_tuple[0]
+          facts = result_tuple[1]
         when "fewshot"
-          total_tokens, few_shots = append_few_shot(record, total_tokens, few_shots)
+          result_tuple = append_few_shot(record, total_tokens, few_shots)
+          total_tokens = result_tuple[0]
+          few_shots = result_tuple[1]
         when "pattern", "gotcha", "rule"
-          # Pattern, gotcha, rule обрабатываются как facts
-          total_tokens, facts = append_fact(record, total_tokens, facts)
+          # Pattern, gotcha, rule обрабатываются как facts с высоким приоритетом
+          result_tuple = append_fact(record, total_tokens, facts)
+          total_tokens = result_tuple[0]
+          facts = result_tuple[1]
+          Rails.logger.info("[RecallService] Processing #{record.kind} #{record.id}: facts.count=#{facts.count}, tokens: #{total_tokens}")
         when "adr_link", "link"
           links << {
             title: record.meta&.dig("title") || record.content[0..100],
             url: record.meta&.dig("url") || "",
             scope: record.scope || []
           }
+        else
+          Rails.logger.warn("[RecallService] Unknown kind for record #{record.id}: #{record.kind.inspect}")
         end
 
         break if total_tokens >= limit_tokens
@@ -110,6 +146,7 @@ module Memories
 
     def append_fact(record, total_tokens, facts)
       token_estimate = record.content.length / 4
+      
       if total_tokens + token_estimate <= limit_tokens
         facts << {
           text: record.content,
@@ -117,6 +154,9 @@ module Memories
           tags: record.tags || []
         }
         total_tokens += token_estimate
+        Rails.logger.debug("[RecallService] append_fact: added #{record.kind} #{record.id}, tokens: #{total_tokens}/#{limit_tokens}")
+      else
+        Rails.logger.debug("[RecallService] append_fact: skipped #{record.kind} #{record.id}, tokens would exceed limit: #{total_tokens + token_estimate}/#{limit_tokens}")
       end
 
       [ total_tokens, facts ]
@@ -124,7 +164,8 @@ module Memories
 
     def append_few_shot(record, total_tokens, few_shots)
       token_estimate = record.content.length / 4
-      if total_tokens + token_estimate <= limit_tokens && few_shots.length < 3
+      # Увеличиваем лимит fewshots до 5, чтобы не ограничивать результаты
+      if total_tokens + token_estimate <= limit_tokens && few_shots.length < 5
         few_shots << {
           title: record.meta&.dig("title") || "Few-shot #{record.id}",
           steps: record.content.split("\n").reject(&:empty?),
