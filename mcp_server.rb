@@ -73,7 +73,21 @@ class MCPServer
 
     # Если method отсутствует, это не валидный запрос
     unless method
-      send_error(id || 0, -32600, "Invalid Request: method is required")
+      send_error(id || 0, -32600, "Invalid Request: method is required") if id
+      return
+    end
+
+    # Обработка уведомлений (notifications) - они не требуют ответа
+    # Уведомления начинаются с "notifications/" и не должны получать ответ
+    if method.start_with?('notifications/')
+      # Уведомления игнорируем, не отправляем ответ
+      return
+    end
+
+    # Обработка методов (methods) - они требуют ответа
+    # Если id отсутствует, это ошибка для методов
+    unless id
+      send_error(0, -32600, "Invalid Request: method requires id")
       return
     end
 

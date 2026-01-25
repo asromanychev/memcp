@@ -5,7 +5,7 @@ require 'fileutils'
 
 # Путь должен быть доступен из контейнера
 # Если aitlas не смонтирован, используем путь хоста через volume
-AITLAS_PATH = ENV['AITLAS_PATH'] || "/Users/asromanychev/dev/insales/aitlas/insales"
+AITLAS_PATH = ENV['AITLAS_PATH'] || "/home/aromanychev/dev/aitlas/insales"
 PROJECT_KEY = "insales"
 
 # Проверяем доступность пути
@@ -15,6 +15,7 @@ unless Dir.exist?($aitlas_path)
   puts "Попробуем альтернативные пути..."
   # Альтернативные пути
   alt_paths = [
+    "/home/aromanychev/dev/aitlas/insales",
     "/Users/asromanychev/dev/insales/aitlas/insales",
     "/mnt/aitlas/aitlas/insales",
     "/app/../insales/aitlas/insales"
