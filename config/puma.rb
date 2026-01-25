@@ -30,6 +30,10 @@ threads threads_count, threads_count
 # Specifies the `port` that Puma will listen on to receive requests; default is 3001.
 port ENV.fetch("PORT", 3001)
 
+# Bind to all interfaces (0.0.0.0) to allow remote connections
+# For localhost only, use: bind "tcp://127.0.0.1:#{ENV.fetch("PORT", 3001)}"
+bind ENV.fetch("BIND", "tcp://0.0.0.0:#{ENV.fetch("PORT", 3001)}")
+
 # Allow puma to be restarted by `bin/rails restart` command.
 plugin :tmp_restart
 
