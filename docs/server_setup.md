@@ -309,8 +309,10 @@ MemCP требует запуска нескольких сервисов одн
 **Терминал 1 - Rails API:**
 ```bash
 cd /path/to/memcp
-BIND=tcp://0.0.0.0:3001 rails server
+DB_HOST=localhost rails server -b 0.0.0.0 -p 3001
 ```
+
+**Важно:** Обязательно указывайте `DB_HOST=localhost` для локального запуска (не Docker). Без этого Rails будет пытаться подключиться к хосту `db`, что приведет к зависанию запросов.
 
 **Терминал 2 - Embedding Server:**
 ```bash
@@ -318,10 +320,10 @@ cd /path/to/memcp
 MEMORY_EMBEDDING_PORT=8081 bin/embedding_server
 ```
 
-**Терминал 3 - Sidekiq Worker:**
+**Терминал 3 - Sidekiq Worker (опционально):**
 ```bash
 cd /path/to/memcp
-bundle exec sidekiq -C config/sidekiq.yml
+DB_HOST=localhost bundle exec sidekiq -C config/sidekiq.yml
 ```
 
 ### Вариант 2: Автоматический запуск (через Procfile.dev)
@@ -345,11 +347,11 @@ sudo apt install tmux  # Linux
 
 # Создание сессии с несколькими окнами
 tmux new-session -d -s memcp
-tmux send-keys -t memcp:0 "cd /path/to/memcp && BIND=tcp://0.0.0.0:3001 rails server" C-m
+tmux send-keys -t memcp:0 "cd /path/to/memcp && DB_HOST=localhost rails server -b 0.0.0.0 -p 3001" C-m
 tmux new-window -t memcp
 tmux send-keys -t memcp:1 "cd /path/to/memcp && MEMORY_EMBEDDING_PORT=8081 bin/embedding_server" C-m
 tmux new-window -t memcp
-tmux send-keys -t memcp:2 "cd /path/to/memcp && bundle exec sidekiq -C config/sidekiq.yml" C-m
+tmux send-keys -t memcp:2 "cd /path/to/memcp && DB_HOST=localhost bundle exec sidekiq -C config/sidekiq.yml" C-m
 tmux attach -t memcp
 ```
 
@@ -371,10 +373,11 @@ docker compose --profile queue up
 ```bash
 # С серверного ноутбука
 curl http://localhost:3001/up
-# Должно вернуть: {"status":"ok"}
+# Должно вернуть: <!DOCTYPE html><html><body style="background-color: green"></body></html>
 
 # С удаленного устройства (замените IP)
 curl http://192.168.1.100:3001/up
+# Должно вернуть тот же HTML с зеленым фоном (это нормально для Rails health check)
 ```
 
 ### 2. Проверка Embedding Server
@@ -443,17 +446,39 @@ ss -tulpn | grep :3001
 
 **Решение:**
 ```bash
-# 1. Проверить, что Rails запущен с BIND=tcp://0.0.0.0:3001
-lsof -i :3001
-# Должно показать: *:3001 (LISTEN)
+# 1. Проверить, что Rails запущен с правильными параметрами:
+DB_HOST=localhost rails server -b 0.0.0.0 -p 3001
 
-# 2. Проверить firewall
+# 2. Проверить, что порт слушает на всех интерфейсах:
+ss -tulpn | grep :3001  # Linux
+lsof -i :3001  # macOS
+# Должно показать: 0.0.0.0:3001 или *:3001 (LISTEN)
+
+# 3. Проверить firewall
 # macOS: System Preferences → Security & Privacy → Firewall
 # Linux: sudo ufw status
 
-# 3. Проверить IP адрес
+# 4. Проверить IP адрес
 ipconfig getifaddr en0  # macOS
-hostname -I  # Linux
+hostname -I | awk '{print $1}'  # Linux
+```
+
+### Проблема: Запросы доходят до сервера, но нет ответа (зависают)
+
+**Причина:** Rails пытается подключиться к хосту `db` (для Docker) вместо `localhost`.
+
+**Симптомы:**
+- В логах видно "Started GET /up", но нет "Completed" или "Processing"
+- Запросы зависают и не возвращают ответ
+- Health check не отвечает
+
+**Решение:**
+```bash
+# Обязательно указывайте DB_HOST=localhost при локальном запуске:
+DB_HOST=localhost rails server -b 0.0.0.0 -p 3001
+
+# Проверить подключение к БД:
+DB_HOST=localhost rails runner "ActiveRecord::Base.connection.execute('SELECT 1')"
 ```
 
 ### Проблема: PostgreSQL не запускается

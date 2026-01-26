@@ -2,114 +2,136 @@
 # frozen_string_literal: true
 
 require 'json'
+require 'socket'
 require 'net/http'
 require 'uri'
 
-# MCP Server для долгосрочной памяти
-class MCPServer
-  API_BASE_URL = ENV.fetch('MEMCP_API_URL', 'http://localhost:3101').freeze
+# MCP TCP Server для долгосрочной памяти
+# Работает как TCP сервер, принимающий MCP протокол по TCP
+class MCPTCPServer
+  API_BASE_URL = ENV.fetch('MEMCP_API_URL', 'http://localhost:3001').freeze
+  DEFAULT_PORT = ENV.fetch('MCP_TCP_PORT', '3002').to_i
+  DEFAULT_HOST = ENV.fetch('MCP_TCP_HOST', '0.0.0.0').freeze
 
-  def initialize
-    @server_ready = false
+  def initialize(port: DEFAULT_PORT, host: DEFAULT_HOST)
+    @port = port
+    @host = host
+    @server = nil
   end
 
-  def run
-    # Основной цикл обработки запросов
-    loop do
-      request = read_request
-      break if request.nil?
+  def start
+    @server = TCPServer.new(@host, @port)
+    puts "MCP TCP Server listening on #{@host}:#{@port}"
+    puts "API endpoint: #{API_BASE_URL}"
 
-      handle_request(request)
+    loop do
+      client = @server.accept
+      Thread.new(client) { |c| handle_client(c) }
     end
-  rescue StandardError => e
-    send_error(0, -32603, "Internal error: #{e.message}")
-    raise
   rescue Interrupt
-    # Graceful shutdown
-    exit 0
+    puts "\nShutting down server..."
+    @server&.close
   end
 
   private
 
-  def read_request
-    line = STDIN.gets
-    return nil if line.nil? || line.strip.empty?
+  def handle_client(client)
+    client_ip = "#{client.peeraddr[2]}:#{client.peeraddr[1]}"
+    puts "Client connected: #{client_ip}"
+    
+    # Устанавливаем таймауты для чтения
+    client.setsockopt(Socket::IPPROTO_TCP, Socket::TCP_NODELAY, 1)
+    
+    loop do
+      # Читаем с таймаутом (5 секунд на чтение)
+      ready = IO.select([client], nil, nil, 5)
+      break unless ready
+      
+      line = client.gets
+      break if line.nil?
+      
+      # Пропускаем пустые строки
+      next if line.strip.empty?
 
-    parsed = JSON.parse(line)
-    parsed
+      request = parse_request(line, client)
+      next if request.nil?
+
+      response = handle_request(request)
+      send_response(client, response) if response
+    end
+  rescue EOFError, Errno::ECONNRESET
+    puts "Client disconnected: #{client_ip}"
+  rescue StandardError => e
+    puts "Error handling client #{client_ip}: #{e.message}"
+    puts e.backtrace.first(3)
+    send_error(client, 0, -32603, "Internal error: #{e.message}")
+  ensure
+    client.close
+    puts "Connection closed: #{client_ip}"
+  end
+
+  def parse_request(line, client = nil)
+    JSON.parse(line.strip)
   rescue JSON::ParserError => e
-    # Для ошибок парсинга не можем получить id из запроса, используем 0
-    send_error(0, -32700, "Parse error: #{e.message}")
+    send_error(client, 0, -32700, "Parse error: #{e.message}") if client
     nil
   end
 
-  def send_response(response)
-    puts JSON.generate(response)
-    STDOUT.flush
-  end
-
-  def send_error(id, code, message)
-    # MCP требует, чтобы id был строкой или числом, не nil
-    # Если id nil, используем 0 как fallback
-    response_id = id.nil? ? 0 : id
-
-    send_response({
-      jsonrpc: '2.0',
-      id: response_id,
-      error: {
-        code: code,
-        message: message
-      }
-    })
-  end
-
   def handle_request(request)
-    # Проверяем, что это валидный JSON-RPC запрос
-    return unless request.is_a?(Hash)
+    return nil unless request.is_a?(Hash)
 
     method = request['method']
     id = request['id']
     params = request['params'] || {}
 
-    # Если method отсутствует, это не валидный запрос
     unless method
-      send_error(id || 0, -32600, "Invalid Request: method is required") if id
-      return
+      return error_response(id || 0, -32600, "Invalid Request: method is required") if id
+      return nil
     end
 
-    # Обработка уведомлений (notifications) - они не требуют ответа
-    # Уведомления начинаются с "notifications/" и не должны получать ответ
+    # Обработка уведомлений
     if method.start_with?('notifications/')
-      # Уведомления игнорируем, не отправляем ответ
-      return
+      return nil # Уведомления не требуют ответа
     end
 
-    # Обработка методов (methods) - они требуют ответа
-    # Если id отсутствует, это ошибка для методов
+    # Методы требуют id
     unless id
-      send_error(0, -32600, "Invalid Request: method requires id")
-      return
+      return error_response(0, -32600, "Invalid Request: method requires id")
     end
 
     case method
     when 'initialize'
-      handle_initialize(id, params)
+      initialize_response(id, params)
     when 'tools/list'
-      handle_tools_list(id, params)
+      tools_list_response(id, params)
     when 'tools/call'
-      handle_tool_call(id, params)
+      tools_call_response(id, params)
     else
-      send_error(id || 0, -32601, "Method not found: #{method}")
+      error_response(id || 0, -32601, "Method not found: #{method}")
     end
   end
 
-  def handle_tools_list(id, params)
-    # id должен быть строкой или числом
-    response_id = id.nil? ? 0 : id
-
-    send_response({
+  def initialize_response(id, params)
+    {
       jsonrpc: '2.0',
-      id: response_id,
+      id: id,
+      result: {
+        protocolVersion: '2024-11-05',
+        capabilities: {
+          tools: {}
+        },
+        serverInfo: {
+          name: 'memcp-tcp-server',
+          version: '1.0.0'
+        }
+      }
+    }
+  end
+
+  def tools_list_response(id, params)
+    {
+      jsonrpc: '2.0',
+      id: id,
       result: {
         tools: [
           {
@@ -125,7 +147,7 @@ class MCPServer
                 signals: { type: 'array', items: { type: 'string' } },
                 limit_tokens: { type: 'number' }
               },
-              required: [ 'project_key' ]
+              required: ['project_key']
             }
           },
           {
@@ -145,52 +167,28 @@ class MCPServer
                 quality: { type: 'object' },
                 meta: { type: 'object' }
               },
-              required: [ 'project_key', 'kind', 'content' ]
+              required: ['project_key', 'kind', 'content']
             }
           }
         ]
       }
-    })
+    }
   end
 
-  def handle_initialize(id, params)
-    # id должен быть строкой или числом
-    response_id = id.nil? ? 0 : id
-
-    send_response({
-      jsonrpc: '2.0',
-      id: response_id,
-      result: {
-        protocolVersion: '2024-11-05',
-        capabilities: {
-          tools: {}
-        },
-        serverInfo: {
-          name: 'memcp-server',
-          version: '1.0.0'
-        }
-      }
-    })
-  end
-
-  def handle_tool_call(id, params)
-    # id должен быть строкой или числом
-    response_id = id.nil? ? 0 : id
-
+  def tools_call_response(id, params)
     tool_name = params['name']
     arguments = params['arguments'] || {}
 
     unless tool_name
-      send_error(response_id, -32602, "Tool name is required")
-      return
+      return error_response(id, -32602, "Tool name is required")
     end
 
     case tool_name
     when 'recall'
       result = call_recall(arguments)
-      send_response({
+      {
         jsonrpc: '2.0',
-        id: response_id,
+        id: id,
         result: {
           content: [
             {
@@ -199,12 +197,12 @@ class MCPServer
             }
           ]
         }
-      })
+      }
     when 'save'
       result = call_save(arguments)
-      send_response({
+      {
         jsonrpc: '2.0',
-        id: response_id,
+        id: id,
         result: {
           content: [
             {
@@ -213,13 +211,12 @@ class MCPServer
             }
           ]
         }
-      })
+      }
     else
-      send_error(response_id, -32602, "Unknown tool: #{tool_name}")
+      error_response(id, -32602, "Unknown tool: #{tool_name}")
     end
   rescue StandardError => e
-    response_id = id.nil? ? 0 : id
-    send_error(response_id, -32603, "Tool execution error: #{e.message}")
+    error_response(id, -32603, "Tool execution error: #{e.message}")
   end
 
   def call_recall(params)
@@ -289,10 +286,36 @@ class MCPServer
   rescue JSON::ParserError => e
     raise "Invalid JSON response from API: #{e.message}"
   end
+
+  def send_response(client, response)
+    return unless client
+    client.puts(JSON.generate(response))
+    client.flush
+  end
+
+  def send_error(client, id, code, message)
+    return unless client
+    response_id = id.nil? ? 0 : id
+    send_response(client, error_response(response_id, code, message))
+  end
+
+  def error_response(id, code, message)
+    {
+      jsonrpc: '2.0',
+      id: id,
+      error: {
+        code: code,
+        message: message
+      }
+    }
+  end
 end
 
 # Запуск сервера
 if __FILE__ == $PROGRAM_NAME
-  server = MCPServer.new
-  server.run
+  port = (ARGV[0] || ENV['MCP_TCP_PORT'] || '3002').to_i
+  host = ARGV[1] || ENV['MCP_TCP_HOST'] || '0.0.0.0'
+  
+  server = MCPTCPServer.new(port: port, host: host)
+  server.start
 end

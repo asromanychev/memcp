@@ -2,6 +2,50 @@
 
 Инструкция для подключения к memcp с корпоративного ноутбука, когда memcp развернут на другом ноутбуке в той же Wi-Fi сети.
 
+## Быстрый старт
+
+### На серверном ноутбуке:
+
+1. **Узнать IP адрес:**
+   ```bash
+   hostname -I | awk '{print $1}'  # Linux
+   # или
+   ipconfig getifaddr en0  # macOS
+   ```
+
+2. **Запустить Rails API:**
+   ```bash
+   cd /path/to/memcp
+   DB_HOST=localhost rails server -b 0.0.0.0 -p 3001
+   ```
+
+3. **Запустить Embedding Server (опционально):**
+   ```bash
+   cd /path/to/memcp
+   MEMORY_EMBEDDING_PORT=8081 bin/embedding_server
+   ```
+
+### На корпоративном ноутбуке:
+
+1. **Скопировать `mcp_server.rb`** с серверного ноутбука
+
+2. **Настроить Cursor IDE** (`~/.cursor/mcp.json`):
+   ```json
+   {
+     "mcpServers": {
+       "memcp": {
+         "command": "ruby",
+         "args": ["/path/to/mcp_server.rb"],
+         "env": {
+           "MEMCP_API_URL": "http://192.168.0.93:3001"
+         }
+       }
+     }
+   }
+   ```
+
+3. **Перезапустить Cursor IDE**
+
 ## Архитектура
 
 ```
@@ -32,16 +76,18 @@ hostname -I | awk '{print $1}'
 
 ### 2. Настроить Rails API для удаленного доступа
 
-Puma уже настроен на прослушивание всех интерфейсов (`0.0.0.0`), но можно явно указать:
+**Важно:** Для локального запуска (не Docker) обязательно указывайте `DB_HOST=localhost`:
 
 ```bash
 # Запуск Rails API на всех интерфейсах
-BIND=tcp://0.0.0.0:3001 rails server
+DB_HOST=localhost rails server -b 0.0.0.0 -p 3001
 
-# Или через переменную окружения
-export BIND=tcp://0.0.0.0:3001
-rails server
+# Или через переменные окружения
+export DB_HOST=localhost
+rails server -b 0.0.0.0 -p 3001
 ```
+
+**Почему это важно:** Без `DB_HOST=localhost` Rails будет пытаться подключиться к хосту `db` (для Docker), что приведет к зависанию запросов и отсутствию ответов от API.
 
 ### 3. Запустить Embedding Server
 
@@ -82,7 +128,7 @@ sudo ufw allow 8081/tcp
 **Терминал 1 - Rails API:**
 ```bash
 cd /path/to/memcp
-BIND=tcp://0.0.0.0:3001 rails server
+DB_HOST=localhost rails server -b 0.0.0.0 -p 3001
 ```
 
 **Терминал 2 - Embedding Server:**
@@ -94,7 +140,7 @@ MEMORY_EMBEDDING_PORT=8081 bin/embedding_server
 **Терминал 3 - Sidekiq Worker (опционально):**
 ```bash
 cd /path/to/memcp
-bundle exec sidekiq -C config/sidekiq.yml
+DB_HOST=localhost bundle exec sidekiq -C config/sidekiq.yml
 ```
 
 ### 6. Проверить доступность с серверного ноутбука
@@ -102,6 +148,7 @@ bundle exec sidekiq -C config/sidekiq.yml
 ```bash
 # Проверка Rails API
 curl http://192.168.1.100:3001/up
+# Должно вернуть: <!DOCTYPE html><html><body style="background-color: green"></body></html>
 
 # Проверка Embedding Server
 curl -X POST http://192.168.1.100:8081/embed \
@@ -183,7 +230,8 @@ nmap -sn 192.168.1.0/24 | grep -E "Nmap scan report|MAC Address"
 # Проверка доступности API
 curl http://192.168.1.100:3001/up
 
-# Должен вернуть: {"status":"ok"}
+# Должен вернуть: <!DOCTYPE html><html><body style="background-color: green"></body></html>
+# (HTML с зеленым фоном - это нормально для Rails health check)
 ```
 
 ### 6. Перезапустить Cursor IDE
@@ -218,10 +266,36 @@ lsof -i :3001
 **Решение:**
 ```bash
 # На серверном ноутбуке
-# 1. Проверить, что Rails запущен с BIND=tcp://0.0.0.0:3001
-# 2. Проверить firewall настройки
-# 3. Проверить, что порт не занят другим процессом
-lsof -i :3001
+# 1. Проверить, что Rails запущен с правильными параметрами:
+DB_HOST=localhost rails server -b 0.0.0.0 -p 3001
+
+# 2. Проверить, что порт слушает на всех интерфейсах:
+ss -tulpn | grep :3001  # Linux
+lsof -i :3001  # macOS
+# Должно показать: 0.0.0.0:3001 или *:3001 (LISTEN)
+
+# 3. Проверить firewall настройки
+sudo ufw status  # Linux
+
+# 4. Проверить, что порт не занят другим процессом
+```
+
+### Проблема: Запросы доходят до сервера, но нет ответа (зависают)
+
+**Причина:** Rails пытается подключиться к хосту `db` (для Docker) вместо `localhost`.
+
+**Симптомы:**
+- В логах видно "Started GET /up", но нет "Completed" или "Processing"
+- Запросы зависают и не возвращают ответ
+- Health check не отвечает
+
+**Решение:**
+```bash
+# Обязательно указывайте DB_HOST=localhost при локальном запуске:
+DB_HOST=localhost rails server -b 0.0.0.0 -p 3001
+
+# Проверить подключение к БД:
+DB_HOST=localhost rails runner "ActiveRecord::Base.connection.execute('SELECT 1')"
 ```
 
 ### Проблема: "Timeout" или "Network unreachable"
@@ -233,11 +307,21 @@ lsof -i :3001
 2. Проверьте IP адреса:
    ```bash
    # На серверном ноутбуке
-   ifconfig | grep "inet "
+   hostname -I | awk '{print $1}'  # Linux
+   ipconfig getifaddr en0  # macOS
    
    # На корпоративном ноутбуке
-   ping 192.168.1.100  # замените на IP серверного ноутбука
+   ping 192.168.0.93  # замените на IP серверного ноутбука
    ```
+
+### Проблема: "Method not found: notifications/initialized" в логах Cursor IDE
+
+**Причина:** Старая версия `mcp_server.rb` не обрабатывает уведомления правильно.
+
+**Решение:**
+1. Убедитесь, что используете актуальную версию `mcp_server.rb` с обработкой уведомлений
+2. Скопируйте обновленный файл с серверного ноутбука
+3. Перезапустите Cursor IDE
 
 ### Проблема: CORS ошибки
 
