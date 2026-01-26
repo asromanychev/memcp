@@ -46,7 +46,7 @@ group :development, :test do
   # Omakase Ruby styling [https://github.com/rails/rubocop-rails-omakase/]
   gem "rubocop-rails-omakase", require: false
 
-  gem "rspec-rails", "~> 6.0.0"
+  gem "rspec-rails", "~> 8.0.2"
   gem "bundler-audit", require: false
   gem "webmock", "~> 3.23", require: false
   gem "listen", "~> 3.9"
