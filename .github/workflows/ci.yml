@@ -31,7 +31,7 @@ jobs:
     env:
       BUNDLE_WITHOUT: development
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - uses: ruby/setup-ruby@v1
         with:
@@ -64,7 +64,7 @@ jobs:
     env:
       BUNDLE_WITHOUT: development
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - uses: ruby/setup-ruby@v1
         with:
@@ -117,7 +117,7 @@ jobs:
       DATABASE_URL: postgres://postgres:postgres@localhost:5432/memcp_test
       BUNDLE_WITHOUT: development
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - uses: ruby/setup-ruby@v1
         with:
@@ -172,7 +172,7 @@ jobs:
       image_tag: ${{ steps.meta.outputs.image_tag }}
       image: ${{ steps.meta.outputs.image }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
@@ -232,7 +232,7 @@ jobs:
       STAGING_SOLID_CABLE_DATABASE_URL: ${{ secrets.STAGING_SOLID_CABLE_DATABASE_URL }}
       STAGING_BASE_URL: ${{ secrets.STAGING_BASE_URL }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - uses: ruby/setup-ruby@v1
         with:
@@ -270,7 +270,7 @@ jobs:
     env:
       STAGING_BASE_URL: ${{ secrets.STAGING_BASE_URL }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: Run staging smoke tests
         run: bin/ci/smoke staging
 
@@ -292,7 +292,7 @@ jobs:
       PRODUCTION_SOLID_CABLE_DATABASE_URL: ${{ secrets.PRODUCTION_SOLID_CABLE_DATABASE_URL }}
       PRODUCTION_BASE_URL: ${{ secrets.PRODUCTION_BASE_URL }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - uses: ruby/setup-ruby@v1
         with:
@@ -330,7 +330,7 @@ jobs:
     env:
       PRODUCTION_BASE_URL: ${{ secrets.PRODUCTION_BASE_URL }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Run production smoke tests
         run: bin/ci/smoke production
